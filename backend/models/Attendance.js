@@ -1,0 +1,2 @@
+import mongoose from 'mongoose';import tenantPlugin from './tenantPlugin.js';
+const schema=new mongoose.Schema({member:{type:mongoose.Schema.Types.ObjectId,ref:'User',required:true},date:{type:Date,required:true},status:{type:String,enum:['Present','Late','Absent'],required:true},markedBy:{type:mongoose.Schema.Types.ObjectId,ref:'User',default:null}},{timestamps:true});schema.index({gym:1,member:1,date:1},{unique:true});schema.plugin(tenantPlugin);export default mongoose.model('Attendance',schema)

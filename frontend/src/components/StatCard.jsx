@@ -1,0 +1,1 @@
+import {motion} from 'framer-motion';export default function StatCard({icon:Icon,label,value,sub}){return <motion.div whileHover={{y:-2}} className="stat-card"><div className="stat-icon"><Icon size={20}/></div><div><div className="stat-label">{label}</div><div className="stat-value">{value}</div>{sub&&<div className="muted">{sub}</div>}</div></motion.div>}

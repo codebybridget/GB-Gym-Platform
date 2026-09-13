@@ -1,0 +1,3 @@
+import mongoose from 'mongoose'
+const schema=new mongoose.Schema({name:{type:String,required:true,trim:true},description:{type:String,default:''},price:{type:Number,required:true,min:0},currency:{type:String,default:'NGN',uppercase:true},billingCycle:{type:String,enum:['monthly','yearly'],default:'monthly'},trialDays:{type:Number,default:0,min:0},maxMembers:{type:Number,default:null,min:0},maxTrainers:{type:Number,default:null,min:0},features:{type:[String],default:[]},active:{type:Boolean,default:true},displayOrder:{type:Number,default:0}},{timestamps:true})
+export default mongoose.model('SaasPlan',schema)

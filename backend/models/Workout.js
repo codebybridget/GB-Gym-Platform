@@ -1,0 +1,2 @@
+import mongoose from 'mongoose';import tenantPlugin from './tenantPlugin.js';
+const schema=new mongoose.Schema({name:{type:String,required:true,trim:true},day:{type:String,default:''},duration:{type:String,default:''},description:{type:String,default:''},status:{type:String,default:'active'},createdBy:{type:mongoose.Schema.Types.ObjectId,ref:'User',default:null}},{timestamps:true});schema.plugin(tenantPlugin);export default mongoose.model('Workout',schema)

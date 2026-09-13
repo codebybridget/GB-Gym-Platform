@@ -1,0 +1,17 @@
+.member-page input:not([type="checkbox"]):not([type="radio"]),
+.member-page textarea,
+.member-page select {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px;
+  background: #050505;
+  color: #fff;
+  padding: 13px 15px;
+  outline: none;
+}
+.member-page textarea { min-height: 110px; resize: vertical; }
+.member-page input:focus, .member-page textarea:focus, .member-page select:focus { border-color: rgba(163,230,53,.75); box-shadow: 0 0 0 3px rgba(163,230,53,.07); }
+.member-page input:disabled { opacity: .45; }
+.member-page input[type="date"] { color-scheme: dark; }
+.member-page button:disabled { cursor: not-allowed; }

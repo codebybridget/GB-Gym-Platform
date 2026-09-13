@@ -1,0 +1,6 @@
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import Field from "../components/Field"
+import api from "../api/api"
+import { err } from "../utils/helpers"
+export default function ForgotPassword(){const [email,setEmail]=useState("");const [gymSlug,setGymSlug]=useState(sessionStorage.getItem("gb_entry_gym")||"");const [message,setMessage]=useState("");const [error,setError]=useState("");const submit=async e=>{e.preventDefault();setError("");setMessage("");try{const r=await api.post("/password-reset/forgot-password",{email,gymSlug:gymSlug.trim().toLowerCase()});setMessage(r.data.message)}catch(e){setError(err(e))}};return <div className="auth-page"><form className="auth-card" onSubmit={submit}><h1>Reset password</h1><p className="muted">Enter your GB account email.</p><Field label="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)}/><Field label="Gym code (optional)" value={gymSlug} onChange={e=>setGymSlug(e.target.value)}/>{message&&<div className="alert">{message}</div>}{error&&<div className="alert error">{error}</div>}<button className="btn primary">Send reset link</button><div className="muted" style={{marginTop:12}}><Link to="/login">Back to sign in</Link></div></form></div>}

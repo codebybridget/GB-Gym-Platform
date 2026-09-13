@@ -1,0 +1,19 @@
+{
+  "name": "GB Fitness Platform",
+  "short_name": "GB Fitness",
+  "description": "Gym management and member fitness platform.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0d10",
+  "theme_color": "#d7ff32",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
