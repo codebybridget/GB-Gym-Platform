@@ -12,7 +12,7 @@ const API_BASE_URL =
 
 /*
 |--------------------------------------------------------------------------
-| Backend Base URL
+| BACKEND BASE URL
 |--------------------------------------------------------------------------
 */
 
@@ -21,7 +21,7 @@ const BACKEND_BASE_URL =
 
 /*
 |--------------------------------------------------------------------------
-| Axios instance
+| AXIOS INSTANCE
 |--------------------------------------------------------------------------
 */
 
@@ -46,21 +46,97 @@ const req = async (request) => {
 
 export const setAccessToken = (token) => {
   if (token) {
-    localStorage.setItem("token", token)
-    localStorage.setItem("accessToken", token)
-    localStorage.setItem("gb_access_token", token)
+    localStorage.setItem(
+      "token",
+      token,
+    )
+
+    localStorage.setItem(
+      "accessToken",
+      token,
+    )
+
+    localStorage.setItem(
+      "gb_access_token",
+      token,
+    )
   } else {
-    localStorage.removeItem("token")
-    localStorage.removeItem("accessToken")
-    localStorage.removeItem("gb_access_token")
+    localStorage.removeItem(
+      "token",
+    )
+
+    localStorage.removeItem(
+      "accessToken",
+    )
+
+    localStorage.removeItem(
+      "gb_access_token",
+    )
   }
 }
 
 function getAuthToken() {
   return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("gb_access_token")
+    localStorage.getItem(
+      "token",
+    ) ||
+    localStorage.getItem(
+      "accessToken",
+    ) ||
+    localStorage.getItem(
+      "gb_access_token",
+    )
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| GYM ENTRY CONTEXT
+|--------------------------------------------------------------------------
+*/
+
+const GYM_ENTRY_STORAGE_KEY =
+  "gb_entry_gym"
+
+export const getGymEntrySlug = () =>
+  sessionStorage.getItem(
+    GYM_ENTRY_STORAGE_KEY,
+  ) ||
+  localStorage.getItem(
+    GYM_ENTRY_STORAGE_KEY,
+  ) ||
+  ""
+
+export const setGymEntrySlug = (
+  gymSlug,
+) => {
+  const normalizedSlug =
+    String(
+      gymSlug || "",
+    ).trim()
+
+  if (!normalizedSlug) {
+    return
+  }
+
+  sessionStorage.setItem(
+    GYM_ENTRY_STORAGE_KEY,
+    normalizedSlug,
+  )
+
+  localStorage.setItem(
+    GYM_ENTRY_STORAGE_KEY,
+    normalizedSlug,
+  )
+}
+
+export const clearGymEntrySlug = () => {
+  sessionStorage.removeItem(
+    GYM_ENTRY_STORAGE_KEY,
+  )
+
+  localStorage.removeItem(
+    GYM_ENTRY_STORAGE_KEY,
   )
 }
 
@@ -70,20 +146,28 @@ function getAuthToken() {
 |--------------------------------------------------------------------------
 */
 
-export function buildMediaUrl(mediaUrl) {
+export function buildMediaUrl(
+  mediaUrl,
+) {
   if (!mediaUrl) {
     return ""
   }
 
-  const value = String(mediaUrl).trim()
+  const value = String(
+    mediaUrl,
+  ).trim()
 
   if (!value) {
     return ""
   }
 
   if (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
+    value.startsWith(
+      "http://",
+    ) ||
+    value.startsWith(
+      "https://",
+    ) ||
     value.startsWith("blob:") ||
     value.startsWith("data:")
   ) {
@@ -110,32 +194,35 @@ export function buildMediaUrl(mediaUrl) {
 export const platform = {
   publicPlans: () =>
     req(
-      api.get("/gyms/public-plans"),
+      api.get(
+        "/gyms/public-plans",
+      ),
     ),
 
   dashboard: () =>
     req(
-      api.get("/platform/dashboard"),
+      api.get(
+        "/platform/dashboard",
+      ),
     ),
 
   gyms: () =>
     req(
-      api.get("/platform/gyms"),
+      api.get(
+        "/platform/gyms",
+      ),
     ),
 
-  updateGym: (id, data) =>
+  updateGym: (
+    id,
+    data,
+  ) =>
     req(
       api.put(
         `/platform/gyms/${id}`,
         data,
       ),
     ),
-
-  /*
-  |--------------------------------------------------------------------------
-  | PLATFORM SUBSCRIPTIONS
-  |--------------------------------------------------------------------------
-  */
 
   subscriptions: () =>
     req(
@@ -155,39 +242,41 @@ export const platform = {
       ),
     ),
 
-  cancelSubscription: (id) =>
+  cancelSubscription: (
+    id,
+  ) =>
     req(
       api.post(
         `/platform/subscriptions/${id}/cancel`,
       ),
     ),
 
-  reactivateSubscription: (id) =>
+  reactivateSubscription: (
+    id,
+  ) =>
     req(
       api.post(
         `/platform/subscriptions/${id}/reactivate`,
       ),
     ),
 
-    deleteGym: (id) =>
-  req(
-    api.delete(
-      `/platform/gyms/${id}`,
+  deleteGym: (
+    id,
+  ) =>
+    req(
+      api.delete(
+        `/platform/gyms/${id}`,
+      ),
     ),
-  ),
 
-  deleteSubscription: (id) =>
+  deleteSubscription: (
+    id,
+  ) =>
     req(
       api.delete(
         `/platform/subscriptions/${id}`,
       ),
     ),
-
-  /*
-  |--------------------------------------------------------------------------
-  | PLATFORM REVENUE
-  |--------------------------------------------------------------------------
-  */
 
   revenue: () =>
     req(
@@ -195,12 +284,6 @@ export const platform = {
         "/platform/revenue",
       ),
     ),
-
-  /*
-  |--------------------------------------------------------------------------
-  | PLATFORM PLANS
-  |--------------------------------------------------------------------------
-  */
 
   plans: {
     list: () =>
@@ -210,7 +293,9 @@ export const platform = {
         ),
       ),
 
-    create: (data) =>
+    create: (
+      data,
+    ) =>
       req(
         api.post(
           "/platform/plans",
@@ -229,19 +314,15 @@ export const platform = {
         ),
       ),
 
-    remove: (id) =>
+    remove: (
+      id,
+    ) =>
       req(
         api.delete(
           `/platform/plans/${id}`,
         ),
       ),
   },
-
-  /*
-  |--------------------------------------------------------------------------
-  | PLATFORM SETTINGS
-  |--------------------------------------------------------------------------
-  */
 
   settings: () =>
     req(
@@ -250,7 +331,9 @@ export const platform = {
       ),
     ),
 
-  updateSettings: (data) =>
+  updateSettings: (
+    data,
+  ) =>
     req(
       api.put(
         "/platform/settings",
@@ -266,7 +349,9 @@ export const platform = {
 */
 
 export const gyms = {
-  register: (data) =>
+  register: (
+    data,
+  ) =>
     api
       .post(
         "/gyms/register",
@@ -277,8 +362,11 @@ export const gyms = {
           response.data,
       ),
 
-  uploadLogo: (file) => {
-    const form = new FormData()
+  uploadLogo: (
+    file,
+  ) => {
+    const form =
+      new FormData()
 
     form.append(
       "logo",
@@ -342,11 +430,15 @@ export const gyms = {
           response.data,
       ),
 
-  entry: (slug) =>
+  entry: (
+    slug,
+  ) =>
     api
       .get(
         `/gyms/entry/${encodeURIComponent(
-          String(slug || "").trim(),
+          String(
+            slug || "",
+          ).trim(),
         )}`,
       )
       .then(
@@ -364,7 +456,9 @@ export const gyms = {
           response.data,
       ),
 
-  update: (payload) =>
+  update: (
+    payload,
+  ) =>
     api
       .put(
         "/gyms/current",
@@ -417,7 +511,7 @@ export const getMyWorkoutHistory =
 
 /*
 |--------------------------------------------------------------------------
-| AUTHENTICATION TOKEN INTERCEPTOR
+| REQUEST INTERCEPTOR
 |--------------------------------------------------------------------------
 */
 
@@ -433,12 +527,6 @@ api.interceptors.request.use(
       config.headers.Authorization =
         `Bearer ${token}`
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FormData uploads
-    |--------------------------------------------------------------------------
-    */
 
     if (
       config.data instanceof
@@ -485,7 +573,8 @@ api.interceptors.request.use(
 */
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) =>
+    response,
 
   async (error) => {
     const originalRequest =
@@ -499,13 +588,19 @@ api.interceptors.response.use(
     )
 
     const isLoginRequest =
-      url.includes("/auth/login")
+      url.includes(
+        "/auth/login",
+      )
 
     const isRefreshRequest =
-      url.includes("/auth/refresh")
+      url.includes(
+        "/auth/refresh",
+      )
 
     const isTrainerAuthRequest =
-      url.includes("/auth/trainer/")
+      url.includes(
+        "/auth/trainer/",
+      )
 
     if (
       status === 401 &&
@@ -525,7 +620,8 @@ api.interceptors.response.use(
           )
 
         const newToken =
-          refreshResponse?.data?.token
+          refreshResponse?.data
+            ?.token
 
         if (newToken) {
           setAccessToken(
@@ -546,6 +642,16 @@ api.interceptors.response.use(
       } catch (
         refreshError
       ) {
+        /*
+         * Do NOT destroy the gym entry context.
+         *
+         * A user who entered through:
+         *
+         * /gym/cgf-fitness
+         *
+         * must remain associated with
+         * cgf-fitness after authentication expires.
+         */
         setAccessToken(null)
 
         localStorage.removeItem(
@@ -578,16 +684,34 @@ export const loginUser =
   async (
     email,
     password,
-    gymSlug,
+    gymSlug = "",
   ) => {
+    const normalizedGymSlug =
+      String(
+        gymSlug || "",
+      ).trim()
+
+    /*
+     * Preserve gym context before
+     * making the authentication request.
+     */
+    if (normalizedGymSlug) {
+      setGymEntrySlug(
+        normalizedGymSlug,
+      )
+    }
+
     const response =
       await api.post(
         "/auth/login",
         {
           email,
           password,
-          ...(gymSlug
-            ? { gymSlug }
+          ...(normalizedGymSlug
+            ? {
+                gymSlug:
+                  normalizedGymSlug,
+              }
             : {}),
         },
       )
@@ -642,10 +766,29 @@ export const registerUser =
   async (
     data,
   ) => {
+    const normalizedGymSlug =
+      String(
+        data?.gymSlug || "",
+      ).trim()
+
+    if (normalizedGymSlug) {
+      setGymEntrySlug(
+        normalizedGymSlug,
+      )
+    }
+
     const response =
       await api.post(
         "/auth/register",
-        data,
+        {
+          ...data,
+          ...(normalizedGymSlug
+            ? {
+                gymSlug:
+                  normalizedGymSlug,
+              }
+            : {}),
+        },
       )
 
     const result =
@@ -847,12 +990,10 @@ function normalizeExerciseMedia(
 
   return {
     ...exercise,
-
     imageUrl:
       buildMediaUrl(
         exercise.imageUrl,
       ),
-
     videoUrl:
       buildMediaUrl(
         exercise.videoUrl,
@@ -874,7 +1015,6 @@ function normalizeExerciseResponse(
   ) {
     return {
       ...data,
-
       exercises:
         data.exercises.map(
           normalizeExerciseMedia,
@@ -885,7 +1025,6 @@ function normalizeExerciseResponse(
   if (data.exercise) {
     return {
       ...data,
-
       exercise:
         normalizeExerciseMedia(
           data.exercise,
@@ -1151,7 +1290,9 @@ export const createExerciseWithMedia =
     ) {
       formData.append(
         "isActive",
-        String(data.isActive),
+        String(
+          data.isActive,
+        ),
       )
     }
 
@@ -2138,13 +2279,27 @@ export const requestTrainerLoginCode =
     email,
     gymSlug = "",
   ) => {
+    const normalizedGymSlug =
+      String(
+        gymSlug || "",
+      ).trim()
+
+    if (normalizedGymSlug) {
+      setGymEntrySlug(
+        normalizedGymSlug,
+      )
+    }
+
     const response =
       await api.post(
         "/auth/trainer/request-code",
         {
           email,
-          ...(gymSlug
-            ? { gymSlug }
+          ...(normalizedGymSlug
+            ? {
+                gymSlug:
+                  normalizedGymSlug,
+              }
             : {}),
         },
       )
@@ -2158,14 +2313,28 @@ export const verifyTrainerLoginCode =
     code,
     gymSlug = "",
   ) => {
+    const normalizedGymSlug =
+      String(
+        gymSlug || "",
+      ).trim()
+
+    if (normalizedGymSlug) {
+      setGymEntrySlug(
+        normalizedGymSlug,
+      )
+    }
+
     const response =
       await api.post(
         "/auth/trainer/verify-code",
         {
           email,
           code,
-          ...(gymSlug
-            ? { gymSlug }
+          ...(normalizedGymSlug
+            ? {
+                gymSlug:
+                  normalizedGymSlug,
+              }
             : {}),
         },
       )

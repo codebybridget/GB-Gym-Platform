@@ -61,6 +61,7 @@ import WeeklyScheduleAdmin from "./pages/admin/WeeklySchedule"
 import Exercises from "./pages/admin/Exercises"
 import Attendance from "./pages/Attendance"
 import AdminAttendance from "./pages/admin/Attendance"
+
 import TrainerDashboard from "./pages/trainer/TrainerDashboard"
 import TrainerMembers from "./pages/trainer/Members"
 import TrainerExercises from "./pages/trainer/Exercises"
@@ -69,6 +70,7 @@ import TrainerAssignments from "./pages/trainer/Assignments"
 import TrainerSchedule from "./pages/trainer/Schedule"
 import TrainerProgress from "./pages/trainer/Progress"
 import TrainerProfile from "./pages/trainer/Profile"
+
 import MemberLayout from "./layouts/MemberLayout"
 import AppShell from "./components/AppShell"
 import Notifications from "./pages/Notifications"
@@ -85,7 +87,7 @@ import {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+    <div className="flex min-h-screen items-center justify-center bg-[#020617] text-white">
       <p className="text-sm text-slate-400">
         Loading...
       </p>
@@ -93,31 +95,64 @@ function LoadingScreen() {
   )
 }
 
-function AuthenticatedRoute() {
-  const { isAuthenticated, loading } = useAuth()
-  const location = useLocation()
+/*
+|--------------------------------------------------------------------------
+| GYM-SCOPED AUTH REDIRECT
+|--------------------------------------------------------------------------
+*/
 
-  if (loading) return <LoadingScreen />
+function getGymLoginPath() {
+  const gymSlug =
+    sessionStorage.getItem(
+      "gb_entry_gym",
+    ) ||
+    localStorage.getItem(
+      "gb_entry_gym",
+    ) ||
+    ""
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!gymSlug.trim()) {
+    return "/login"
   }
 
-  return <Outlet />
+  return `/login?gym=${encodeURIComponent(
+    gymSlug.trim(),
+  )}`
 }
 
-function PlatformLayout() {
-  return <AppShell />
+function getGymTrainerLoginPath() {
+  const gymSlug =
+    sessionStorage.getItem(
+      "gb_entry_gym",
+    ) ||
+    localStorage.getItem(
+      "gb_entry_gym",
+    ) ||
+    ""
+
+  if (!gymSlug.trim()) {
+    return "/trainer-login"
+  }
+
+  return `/trainer-login?gym=${encodeURIComponent(
+    gymSlug.trim(),
+  )}`
 }
 
-function ProtectedRoute() {
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED ROUTE
+|--------------------------------------------------------------------------
+*/
+
+function AuthenticatedRoute() {
   const {
     isAuthenticated,
-    isMember,
     loading,
   } = useAuth()
 
-  const location = useLocation()
+  const location =
+    useLocation()
 
   if (loading) {
     return <LoadingScreen />
@@ -126,10 +161,57 @@ function ProtectedRoute() {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/login"
+        to={getGymLoginPath()}
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
+        }}
+      />
+    )
+  }
+
+  return <Outlet />
+}
+
+/*
+|--------------------------------------------------------------------------
+| PLATFORM LAYOUT
+|--------------------------------------------------------------------------
+*/
+
+function PlatformLayout() {
+  return <AppShell />
+}
+
+/*
+|--------------------------------------------------------------------------
+| MEMBER ROUTE
+|--------------------------------------------------------------------------
+*/
+
+function ProtectedRoute() {
+  const {
+    isAuthenticated,
+    isMember,
+    loading,
+  } = useAuth()
+
+  const location =
+    useLocation()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to={getGymLoginPath()}
+        replace
+        state={{
+          from:
+            location.pathname,
         }}
       />
     )
@@ -138,7 +220,7 @@ function ProtectedRoute() {
   if (!isMember) {
     return (
       <Navigate
-        to="/"
+        to={getGymLoginPath()}
         replace
       />
     )
@@ -146,6 +228,12 @@ function ProtectedRoute() {
 
   return <Outlet />
 }
+
+/*
+|--------------------------------------------------------------------------
+| PAID MEMBER ROUTE
+|--------------------------------------------------------------------------
+*/
 
 function PaidMemberRoute() {
   const {
@@ -156,76 +244,147 @@ function PaidMemberRoute() {
     loading,
   } = useAuth()
 
-  const location = useLocation()
+  const location =
+    useLocation()
 
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false)
+  const [
+    subscriptionLoading,
+    setSubscriptionLoading,
+  ] = useState(true)
+
+  const [
+    hasActiveSubscription,
+    setHasActiveSubscription,
+  ] = useState(false)
 
   useEffect(() => {
     let cancelled = false
 
-    const checkSubscription = async () => {
-      if (loading) return
+    const checkSubscription =
+      async () => {
+        if (loading) {
+          return
+        }
 
-      if (!isAuthenticated || !isMember) {
-        if (!cancelled) setSubscriptionLoading(false)
-        return
+        if (
+          !isAuthenticated ||
+          !isMember
+        ) {
+          if (!cancelled) {
+            setSubscriptionLoading(
+              false,
+            )
+          }
+
+          return
+        }
+
+        try {
+          setSubscriptionLoading(
+            true,
+          )
+
+          const data =
+            await getMySubscription()
+
+          if (cancelled) {
+            return
+          }
+
+          setHasActiveSubscription(
+            Boolean(
+              data?.hasActiveSubscription,
+            ),
+          )
+        } catch (error) {
+          if (cancelled) {
+            return
+          }
+
+          console.error(
+            "Subscription check error:",
+            error,
+          )
+
+          setHasActiveSubscription(
+            false,
+          )
+        } finally {
+          if (!cancelled) {
+            setSubscriptionLoading(
+              false,
+            )
+          }
+        }
       }
-
-      try {
-        setSubscriptionLoading(true)
-        const data = await getMySubscription()
-
-        if (cancelled) return
-
-        setHasActiveSubscription(Boolean(data?.hasActiveSubscription))
-      } catch (error) {
-        if (cancelled) return
-
-        console.error("Subscription check error:", error)
-        setHasActiveSubscription(false)
-      } finally {
-        if (!cancelled) setSubscriptionLoading(false)
-      }
-    }
 
     checkSubscription()
 
     return () => {
       cancelled = true
     }
-  }, [loading, isAuthenticated, isMember])
+  }, [
+    loading,
+    isAuthenticated,
+    isMember,
+  ])
 
   if (loading) {
     return <LoadingScreen />
   }
 
-  if (isAuthenticated && isTrainer) {
-    return <Navigate to="/trainer" replace />
+  if (
+    isAuthenticated &&
+    isTrainer
+  ) {
+    return (
+      <Navigate
+        to={getGymTrainerLoginPath()}
+        replace
+      />
+    )
   }
 
-  if (isAuthenticated && isAdmin) {
-    return <Navigate to="/admin" replace />
+  if (
+    isAuthenticated &&
+    isAdmin
+  ) {
+    return (
+      <Navigate
+        to={getGymLoginPath()}
+        replace
+      />
+    )
   }
 
-  if (subscriptionLoading && isAuthenticated && isMember) {
+  if (
+    subscriptionLoading &&
+    isAuthenticated &&
+    isMember
+  ) {
     return <LoadingScreen />
   }
 
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/login"
+        to={getGymLoginPath()}
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
         }}
       />
     )
   }
 
   if (!isMember) {
-    return <Navigate to="/" replace />
+    return (
+      <Navigate
+        to={getGymLoginPath()}
+        replace
+      />
+    )
   }
 
   if (!hasActiveSubscription) {
@@ -234,8 +393,10 @@ function PaidMemberRoute() {
         to="/membership-plans"
         replace
         state={{
-          from: location.pathname,
-          subscriptionRequired: true,
+          from:
+            location.pathname,
+          subscriptionRequired:
+            true,
         }}
       />
     )
@@ -243,6 +404,12 @@ function PaidMemberRoute() {
 
   return <Outlet />
 }
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN ROUTE
+|--------------------------------------------------------------------------
+*/
 
 function AdminRoute() {
   const {
@@ -251,7 +418,8 @@ function AdminRoute() {
     loading,
   } = useAuth()
 
-  const location = useLocation()
+  const location =
+    useLocation()
 
   if (loading) {
     return <LoadingScreen />
@@ -260,10 +428,11 @@ function AdminRoute() {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/login"
+        to={getGymLoginPath()}
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
         }}
       />
     )
@@ -272,10 +441,11 @@ function AdminRoute() {
   if (!isAdmin) {
     return (
       <Navigate
-        to="/login"
+        to={getGymLoginPath()}
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
         }}
       />
     )
@@ -283,6 +453,12 @@ function AdminRoute() {
 
   return <Outlet />
 }
+
+/*
+|--------------------------------------------------------------------------
+| TRAINER ROUTE
+|--------------------------------------------------------------------------
+*/
 
 function TrainerRoute() {
   const {
@@ -292,7 +468,8 @@ function TrainerRoute() {
     loading,
   } = useAuth()
 
-  const location = useLocation()
+  const location =
+    useLocation()
 
   if (loading) {
     return <LoadingScreen />
@@ -301,21 +478,36 @@ function TrainerRoute() {
   if (!isAuthenticated) {
     return (
       <Navigate
-        to="/trainer-login"
+        to={getGymTrainerLoginPath()}
         replace
         state={{
-          from: location.pathname,
+          from:
+            location.pathname,
         }}
       />
     )
   }
 
-  if (!isTrainer || user?.role !== "trainer") {
-    return <Navigate to="/" replace />
+  if (
+    !isTrainer ||
+    user?.role !== "trainer"
+  ) {
+    return (
+      <Navigate
+        to={getGymLoginPath()}
+        replace
+      />
+    )
   }
 
   return <Outlet />
 }
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC GB PLATFORM ENTRY
+|--------------------------------------------------------------------------
+*/
 
 function PublicEntry() {
   const {
@@ -327,25 +519,57 @@ function PublicEntry() {
     loading,
   } = useAuth()
 
-  const navigate = useNavigate()
+  const navigate =
+    useNavigate()
 
   if (loading) {
     return <LoadingScreen />
   }
 
   if (isAuthenticated) {
-    if (isPlatformOwner) return <Navigate to="/platform" replace />
-    if (isAdmin) return <Navigate to="/admin" replace />
-    if (isTrainer) return <Navigate to="/trainer" replace />
-    if (isMember) return <Navigate to="/dashboard" replace />
+    if (isPlatformOwner) {
+      return (
+        <Navigate
+          to="/platform"
+          replace
+        />
+      )
+    }
+
+    if (isAdmin) {
+      return (
+        <Navigate
+          to="/admin"
+          replace
+        />
+      )
+    }
+
+    if (isTrainer) {
+      return (
+        <Navigate
+          to="/trainer"
+          replace
+        />
+      )
+    }
+
+    if (isMember) {
+      return (
+        <Navigate
+          to="/dashboard"
+          replace
+        />
+      )
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
+    <div className="min-h-screen bg-[#020617] px-4 py-8 text-white">
       <div className="flex min-h-[calc(100vh-4rem)] w-full items-center justify-center">
         <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-white/5 px-8 py-11 shadow-2xl backdrop-blur-xl sm:px-11 sm:py-12">
           <div className="text-center">
-            <div className="mx-auto mb-7 flex h-[90px] w-[90px] items-center justify-center rounded-[1.4rem] bg-lime-400 text-3xl font-black text-slate-950">
+            <div className="mx-auto mb-7 flex h-[90px] w-[90px] items-center justify-center rounded-[1.4rem] bg-[#D9FF3F] text-3xl font-black text-[#020617]">
               GB
             </div>
 
@@ -361,15 +585,21 @@ function PublicEntry() {
           <div className="mt-12 space-y-4">
             <button
               type="button"
-              onClick={() => navigate("/register-gym")}
-              className="block w-full rounded-2xl bg-lime-400 px-6 py-5 text-center text-xl font-medium text-slate-950 transition hover:bg-lime-300"
+              onClick={() =>
+                navigate(
+                  "/register-gym",
+                )
+              }
+              className="block w-full rounded-2xl bg-[#D9FF3F] px-6 py-5 text-center text-xl font-medium text-[#020617] transition hover:bg-[#E7FF72]"
             >
               Register Your Gym
             </button>
 
             <button
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() =>
+                navigate("/login")
+              }
               className="block w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center text-xl font-medium text-white transition hover:bg-white/10"
             >
               Sign In
@@ -381,18 +611,36 @@ function PublicEntry() {
   )
 }
 
+/*
+|--------------------------------------------------------------------------
+| MEMBER ASSIGNMENTS ROUTE
+|--------------------------------------------------------------------------
+*/
+
 function MemberAssignmentsRoute() {
-  const navigate = useNavigate()
-  const { memberId } = useParams()
+  const navigate =
+    useNavigate()
+
+  const { memberId } =
+    useParams()
 
   return (
     <MemberAssignments
       memberId={memberId}
-      onBack={() => navigate("/admin/assignments")}
+      onBack={() =>
+        navigate(
+          "/admin/assignments",
+        )
+      }
     />
   )
 }
 
+/*
+|--------------------------------------------------------------------------
+| PLATFORM ROUTE
+|--------------------------------------------------------------------------
+*/
 
 function PlatformRoute() {
   const {
@@ -401,140 +649,564 @@ function PlatformRoute() {
     loading,
   } = useAuth()
 
-  const location = useLocation()
+  const location =
+    useLocation()
 
   if (loading) {
     return <LoadingScreen />
   }
 
+  /*
+   * Platform routes ALWAYS use the
+   * generic GB Platform authentication.
+   */
   if (!isAuthenticated) {
     return (
       <Navigate
         to="/login"
         replace
-        state={{ from: location.pathname }}
+        state={{
+          from:
+            location.pathname,
+        }}
       />
     )
   }
 
   if (!isPlatformOwner) {
-    return <Navigate to="/" replace />
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    )
   }
 
   return <Outlet />
 }
 
+/*
+|--------------------------------------------------------------------------
+| GYM-SCOPED AUTH ROUTES
+|--------------------------------------------------------------------------
+*/
+
+function GymScopedLoginRoute() {
+  const { gymSlug } =
+    useParams()
+
+  useEffect(() => {
+    if (gymSlug?.trim()) {
+      sessionStorage.setItem(
+        "gb_entry_gym",
+        gymSlug.trim(),
+      )
+    }
+  }, [gymSlug])
+
+  return (
+    <Login
+      key={gymSlug}
+    />
+  )
+}
+
+function GymScopedRegisterRoute() {
+  const { gymSlug } =
+    useParams()
+
+  useEffect(() => {
+    if (gymSlug?.trim()) {
+      sessionStorage.setItem(
+        "gb_entry_gym",
+        gymSlug.trim(),
+      )
+    }
+  }, [gymSlug])
+
+  return (
+    <Register
+      key={gymSlug}
+    />
+  )
+}
+
+function GymScopedTrainerLoginRoute() {
+  const { gymSlug } =
+    useParams()
+
+  useEffect(() => {
+    if (gymSlug?.trim()) {
+      sessionStorage.setItem(
+        "gb_entry_gym",
+        gymSlug.trim(),
+      )
+    }
+  }, [gymSlug])
+
+  return (
+    <TrainerLogin
+      key={gymSlug}
+    />
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| APPLICATION
+|--------------------------------------------------------------------------
+*/
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<PublicEntry />} />
+      {/* GB PLATFORM */}
+      <Route
+        path="/"
+        element={<PublicEntry />}
+      />
 
-      <Route path="/gym/:gymSlug" element={<GymEntry />} />
+      {/* GYM ENTRY PORTAL */}
+      <Route
+        path="/gym/:gymSlug"
+        element={<GymEntry />}
+      />
 
-      <Route path="/login" element={<Login />} />
+      {/* GYM-SCOPED MEMBER LOGIN */}
+      <Route
+        path="/gym/:gymSlug/login"
+        element={
+          <GymScopedLoginRoute />
+        }
+      />
+
+      {/* GYM-SCOPED MEMBER REGISTRATION */}
+      <Route
+        path="/gym/:gymSlug/register"
+        element={
+          <GymScopedRegisterRoute />
+        }
+      />
+
+      {/* GYM-SCOPED TRAINER LOGIN */}
+      <Route
+        path="/gym/:gymSlug/trainer-login"
+        element={
+          <GymScopedTrainerLoginRoute />
+        }
+      />
+
+      {/* GENERIC GB AUTHENTICATION */}
+      <Route
+        path="/login"
+        element={<Login />}
+      />
 
       <Route
         path="/trainer-login"
         element={<TrainerLogin />}
       />
 
-      <Route path="/register-gym" element={<RegisterGym />} />
+      <Route
+        path="/register-gym"
+        element={<RegisterGym />}
+      />
 
-      <Route path="/register" element={<Register />} />
+      <Route
+        path="/register"
+        element={<Register />}
+      />
 
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/forgot-password"
+        element={<ForgotPassword />}
+      />
 
-      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/reset-password"
+        element={<ResetPassword />}
+      />
 
       <Route
         path="/admin-forgot-password"
-        element={<AdminForgotPassword />}
+        element={
+          <AdminForgotPassword />
+        }
       />
 
-      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route
+        path="/admin-login"
+        element={<AdminLogin />}
+      />
 
+      {/* PLATFORM */}
       <Route element={<PlatformRoute />}>
-        <Route element={<PlatformLayout />}>
-          <Route path="/platform" element={<PlatformDashboard />} />
-          <Route path="/platform/gyms" element={<PlatformGyms />} />
-          <Route path="/platform/subscriptions" element={<PlatformSubscriptions />} />
-          <Route path="/platform/revenue" element={<PlatformRevenue />} />
-          <Route path="/platform/plans" element={<PlatformPlans />} />
-          <Route path="/platform/settings" element={<PlatformSettings />} />
+        <Route
+          element={<PlatformLayout />}
+        >
+          <Route
+            path="/platform"
+            element={
+              <PlatformDashboard />
+            }
+          />
+
+          <Route
+            path="/platform/gyms"
+            element={<PlatformGyms />}
+          />
+
+          <Route
+            path="/platform/subscriptions"
+            element={
+              <PlatformSubscriptions />
+            }
+          />
+
+          <Route
+            path="/platform/revenue"
+            element={
+              <PlatformRevenue />
+            }
+          />
+
+          <Route
+            path="/platform/plans"
+            element={<PlatformPlans />}
+          />
+
+          <Route
+            path="/platform/settings"
+            element={
+              <PlatformSettings />
+            }
+          />
         </Route>
       </Route>
 
-      <Route path="/payment/callback" element={<PaymentCallback />} />
+      {/* PAYMENT CALLBACK */}
+      <Route
+        path="/payment/callback"
+        element={
+          <PaymentCallback />
+        }
+      />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<MemberLayout />}>
-          <Route path="/membership-plans" element={<MemberMembershipPlans />} />
-          <Route path="/membership" element={<MemberMembershipPlans />} />
-          <Route path="/payment" element={<Payment />} />
+      {/* MEMBERS */}
+      <Route
+        element={<ProtectedRoute />}
+      >
+        <Route
+          element={<MemberLayout />}
+        >
+          <Route
+            path="/membership-plans"
+            element={
+              <MemberMembershipPlans />
+            }
+          />
 
-          <Route element={<PaidMemberRoute />}>
-            <Route path="/dashboard" element={<Home />} />
-            <Route path="/workout" element={<Workout />} />
-            <Route path="/workout-history" element={<WorkoutHistory />} />
-            <Route path="/progress" element={<MemberProgress />} />
-            <Route path="/weekly-schedule" element={<WeeklySchedule />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/gym-social-media" element={<GymSocialMedia />} />
-            <Route path="/settings" element={<MemberSettings />} />
+          <Route
+            path="/membership"
+            element={
+              <MemberMembershipPlans />
+            }
+          />
+
+          <Route
+            path="/payment"
+            element={<Payment />}
+          />
+
+          <Route
+            element={
+              <PaidMemberRoute />
+            }
+          >
+            <Route
+              path="/dashboard"
+              element={<Home />}
+            />
+
+            <Route
+              path="/workout"
+              element={<Workout />}
+            />
+
+            <Route
+              path="/workout-history"
+              element={
+                <WorkoutHistory />
+              }
+            />
+
+            <Route
+              path="/progress"
+              element={
+                <MemberProgress />
+              }
+            />
+
+            <Route
+              path="/weekly-schedule"
+              element={
+                <WeeklySchedule />
+              }
+            />
+
+            <Route
+              path="/attendance"
+              element={
+                <Attendance />
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={<Profile />}
+            />
+
+            <Route
+              path="/gym-social-media"
+              element={
+                <GymSocialMedia />
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <MemberSettings />
+              }
+            />
           </Route>
         </Route>
       </Route>
 
-      <Route element={<TrainerRoute />}>
-        <Route element={<AppShell />}>
-          <Route path="/trainer" element={<TrainerDashboard />} />
-          <Route path="/trainer/members" element={<TrainerMembers />} />
-          <Route path="/trainer/exercises" element={<TrainerExercises />} />
-          <Route path="/trainer/programs" element={<TrainerPrograms />} />
-          <Route path="/trainer/assignments" element={<TrainerAssignments />} />
-          <Route path="/trainer/schedule" element={<TrainerSchedule />} />
-          <Route path="/trainer/progress" element={<TrainerProgress />} />
-          <Route path="/trainer/profile" element={<TrainerProfile />} />
+      {/* TRAINERS */}
+      <Route
+        element={<TrainerRoute />}
+      >
+        <Route
+          element={<AppShell />}
+        >
+          <Route
+            path="/trainer"
+            element={
+              <TrainerDashboard />
+            }
+          />
+
+          <Route
+            path="/trainer/members"
+            element={
+              <TrainerMembers />
+            }
+          />
+
+          <Route
+            path="/trainer/exercises"
+            element={
+              <TrainerExercises />
+            }
+          />
+
+          <Route
+            path="/trainer/programs"
+            element={
+              <TrainerPrograms />
+            }
+          />
+
+          <Route
+            path="/trainer/assignments"
+            element={
+              <TrainerAssignments />
+            }
+          />
+
+          <Route
+            path="/trainer/schedule"
+            element={
+              <TrainerSchedule />
+            }
+          />
+
+          <Route
+            path="/trainer/progress"
+            element={
+              <TrainerProgress />
+            }
+          />
+
+          <Route
+            path="/trainer/profile"
+            element={
+              <TrainerProfile />
+            }
+          />
         </Route>
       </Route>
 
-      <Route element={<AuthenticatedRoute />}>
-        <Route element={<AppShell />}>
-          <Route path="/notifications" element={<Notifications />} />
+      {/* SHARED AUTHENTICATED PAGES */}
+      <Route
+        element={
+          <AuthenticatedRoute />
+        }
+      >
+        <Route
+          element={<AppShell />}
+        >
+          <Route
+            path="/notifications"
+            element={
+              <Notifications />
+            }
+          />
         </Route>
       </Route>
 
-      <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="members" element={<Members />} />
-          <Route path="trainers" element={<Trainers />} />
-          <Route path="membership" element={<AdminMembershipPlans />} />
-          <Route path="membership-plans" element={<AdminMembershipPlans />} />
-          <Route path="subscription" element={<AdminSubscription />} />
-          <Route path="schedule" element={<WeeklyScheduleAdmin />} />
-          <Route path="exercises" element={<Exercises />} />
-          <Route path="programs" element={<ProgramBuilder />} />
-          <Route path="program-builder" element={<ProgramBuilder />} />
-          <Route path="workouts" element={<Workouts />} />
-          <Route path="assignments" element={<Assignments />} />
-          <Route path="progress" element={<Progress />} />
-          <Route path="attendance" element={<AdminAttendance />} />
-          <Route path="revenue" element={<AdminRevenue />} />
-          <Route path="social-media" element={<AdminSocialMedia />} />
+      {/* ADMIN */}
+      <Route
+        element={<AdminRoute />}
+      >
+        <Route
+          path="/admin"
+          element={<AdminLayout />}
+        >
+          <Route
+            index
+            element={
+              <AdminDashboard />
+            }
+          />
+
+          <Route
+            path="members"
+            element={<Members />}
+          />
+
+          <Route
+            path="trainers"
+            element={<Trainers />}
+          />
+
+          <Route
+            path="membership"
+            element={
+              <AdminMembershipPlans />
+            }
+          />
+
+          <Route
+            path="membership-plans"
+            element={
+              <AdminMembershipPlans />
+            }
+          />
+
+          <Route
+            path="subscription"
+            element={
+              <AdminSubscription />
+            }
+          />
+
+          <Route
+            path="schedule"
+            element={
+              <WeeklyScheduleAdmin />
+            }
+          />
+
+          <Route
+            path="exercises"
+            element={<Exercises />}
+          />
+
+          <Route
+            path="programs"
+            element={
+              <ProgramBuilder />
+            }
+          />
+
+          <Route
+            path="program-builder"
+            element={
+              <ProgramBuilder />
+            }
+          />
+
+          <Route
+            path="workouts"
+            element={<Workouts />}
+          />
+
+          <Route
+            path="assignments"
+            element={
+              <Assignments />
+            }
+          />
+
+          <Route
+            path="progress"
+            element={<Progress />}
+          />
+
+          <Route
+            path="attendance"
+            element={
+              <AdminAttendance />
+            }
+          />
+
+          <Route
+            path="revenue"
+            element={
+              <AdminRevenue />
+            }
+          />
+
+          <Route
+            path="social-media"
+            element={
+              <AdminSocialMedia />
+            }
+          />
 
           <Route
             path="assignments/member/:memberId"
-            element={<MemberAssignmentsRoute />}
+            element={
+              <MemberAssignmentsRoute />
+            }
           />
 
-          <Route path="profile" element={<AdminProfile />} />
-          <Route path="settings" element={<Settings />} />
+          <Route
+            path="profile"
+            element={
+              <AdminProfile />
+            }
+          />
+
+          <Route
+            path="settings"
+            element={<Settings />}
+          />
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* FALLBACK */}
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
+      />
     </Routes>
   )
 }
