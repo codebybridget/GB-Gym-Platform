@@ -284,6 +284,12 @@ export const platform = {
         "/platform/revenue",
       ),
     ),
+  cleanupRevenueTestData: () =>
+    req(
+      api.delete(
+        "/platform/revenue/test-data",
+      ),
+    ),
 
   plans: {
     list: () =>

@@ -10,9 +10,21 @@ const emergencyContactSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    name: { type: String, trim: true, default: "" },
-    relationship: { type: String, trim: true, default: "" },
-    phone: { type: String, trim: true, default: "" },
+    name: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    relationship: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     email: {
       type: String,
       trim: true,
@@ -70,23 +82,19 @@ const subscriptionSchema = new mongoose.Schema(
       ],
       default: null,
     },
-
     amount: {
       type: Number,
       default: 0,
       min: 0,
     },
-
     startDate: {
       type: Date,
       default: null,
     },
-
     expiryDate: {
       type: Date,
       default: null,
     },
-
     status: {
       type: String,
       enum: [
@@ -97,7 +105,6 @@ const subscriptionSchema = new mongoose.Schema(
       ],
       default: "expired",
     },
-
     paymentReference: {
       type: String,
       trim: true,
@@ -114,31 +121,26 @@ const pushSubscriptionSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     expirationTime: {
       type: Number,
       default: null,
     },
-
     keys: {
       p256dh: {
         type: String,
         required: true,
         trim: true,
       },
-
       auth: {
         type: String,
         required: true,
         trim: true,
       },
     },
-
     createdAt: {
       type: Date,
       default: Date.now,
     },
-
     updatedAt: {
       type: Date,
       default: Date.now,
@@ -154,26 +156,22 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     lastName: {
       type: String,
       required: true,
       trim: true,
     },
-
     email: {
       type: String,
       required: true,
       lowercase: true,
       trim: true,
     },
-
     phone: {
       type: String,
       trim: true,
       default: "",
     },
-
     password: {
       type: String,
       required: false,
@@ -181,77 +179,76 @@ const userSchema = new mongoose.Schema(
       select: false,
       default: undefined,
     },
-
     role: {
       type: String,
       enum: [
+        "platform_owner",
+        "gym_owner",
         "admin",
         "trainer",
         "member",
-        "platform_owner",
       ],
       default: "member",
     },
-
-    // Gym that owns this user. This is the tenant boundary used by
-    // trainer/admin/member visibility and other gym-scoped operations.
     gym: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Gym",
       default: null,
       index: true,
     },
-
     dateOfBirth: {
       type: Date,
       default: null,
     },
-
     gender: {
       type: String,
-      enum: ["female", "male", "other", ""],
+      enum: [
+        "female",
+        "male",
+        "other",
+        "",
+      ],
       default: "",
     },
-
     age: {
       type: Number,
       min: 1,
       max: 120,
       default: null,
     },
-
     height: {
       value: {
         type: Number,
         default: null,
       },
-
       unit: {
         type: String,
-        enum: ["cm", "ft"],
+        enum: [
+          "cm",
+          "ft",
+        ],
         default: "cm",
       },
     },
-
     weight: {
       value: {
         type: Number,
         default: null,
       },
-
       unit: {
         type: String,
-        enum: ["kg", "lb"],
+        enum: [
+          "kg",
+          "lb",
+        ],
         default: "kg",
       },
     },
-
     address: {
       type: String,
       trim: true,
       default: "",
     },
-
     fitnessGoal: {
       type: String,
       enum: [
@@ -262,91 +259,87 @@ const userSchema = new mongoose.Schema(
       ],
       default: "keep_fit",
     },
-
     medicalProfile: medicalProfileSchema,
-
     emergencyContacts: {
       type: [emergencyContactSchema],
       default: [],
     },
-
     profilePhoto: {
       type: String,
       default: "",
     },
-
     isActive: {
       type: Boolean,
       default: true,
     },
-
     emailVerified: {
       type: Boolean,
       default: false,
     },
-
     lastLogin: {
       type: Date,
       default: null,
     },
-
     subscription: {
       type: subscriptionSchema,
       default: () => ({}),
     },
-
     passwordResetToken: {
       type: String,
       default: "",
       select: false,
     },
-
     passwordResetExpires: {
       type: Date,
       default: null,
       select: false,
     },
-
     passwordResetRole: {
       type: String,
       default: "",
       select: false,
     },
-
-    // Browser/device push notification subscriptions.
-    // A member can have multiple devices/browsers.
     pushSubscriptions: {
       type: [pushSubscriptionSchema],
       default: [],
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 )
 
-// A user email must be unique inside a gym, but the same email may
-// be used by the same person at a different gym.
 userSchema.index(
-  { gym: 1, email: 1 },
+  {
+    gym: 1,
+    email: 1,
+  },
   {
     unique: true,
     name: "gym_email_unique",
     partialFilterExpression: {
-      gym: { $type: "objectId" },
-      email: { $type: "string" },
+      gym: {
+        $type: "objectId",
+      },
+      email: {
+        $type: "string",
+      },
     },
   },
 )
 
-// Users without a gym (for example, platform owners) still need a
-// unique email address.
 userSchema.index(
-  { email: 1 },
+  {
+    email: 1,
+  },
   {
     unique: true,
     name: "platform_email_unique",
     partialFilterExpression: {
       gym: null,
-      email: { $type: "string" },
+      email: {
+        $type: "string",
+      },
     },
   },
 )
@@ -360,21 +353,30 @@ userSchema.pre(
 
     const salt = await bcrypt.genSalt(12)
 
-    this.password = await bcrypt.hash(
-      this.password,
-      salt,
-    )
+    this.password =
+      await bcrypt.hash(
+        this.password,
+        salt,
+      )
 
     next()
   },
 )
 
-userSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password)
-}
+userSchema.methods.comparePassword =
+  async function (password) {
+    return bcrypt.compare(
+      password,
+      this.password,
+    )
+  }
 
 userSchema.plugin(tenantPlugin)
 
-const User = mongoose.model("User", userSchema)
+const User =
+  mongoose.model(
+    "User",
+    userSchema,
+  )
 
 export default User

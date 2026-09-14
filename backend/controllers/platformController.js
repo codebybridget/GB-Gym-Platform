@@ -1642,6 +1642,160 @@ export const platformRevenue =
 
 /*
 |--------------------------------------------------------------------------
+| Clean test/orphaned platform transactions
+|--------------------------------------------------------------------------
+|
+| Keeps deleteGym() audit-safe while allowing controlled cleanup during
+| development/testing. In production this is disabled unless explicitly
+| enabled with ALLOW_REVENUE_TEST_CLEANUP=true.
+|--------------------------------------------------------------------------
+*/
+
+export const revenueCleanup =
+  async (
+    req,
+    res,
+  ) => {
+    try {
+      const isProduction =
+        String(process.env.NODE_ENV || "")
+          .toLowerCase() === "production"
+
+      const cleanupAllowed =
+        !isProduction ||
+        String(
+          process.env.ALLOW_REVENUE_TEST_CLEANUP || "",
+        ).toLowerCase() === "true"
+
+      if (!cleanupAllowed) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Revenue test-data cleanup is disabled in production. Remove test records from the development database instead.",
+        })
+      }
+
+      const transactions =
+        await PlatformTransaction.find()
+          .select("_id gym status")
+          .lean()
+
+      const gymIds = [
+        ...new Set(
+          transactions
+            .map((transaction) =>
+              transaction.gym
+                ? String(transaction.gym)
+                : "",
+            )
+            .filter(Boolean),
+        ),
+      ]
+
+      const existingGyms =
+        gymIds.length
+          ? await Gym.find({
+              _id: { $in: gymIds },
+            })
+              .select("_id")
+              .lean()
+          : []
+
+      const existingGymIds =
+        new Set(
+          existingGyms.map((gym) =>
+            String(gym._id),
+          ),
+        )
+
+      const deletableIds = []
+      let pendingDeleted = 0
+      let failedDeleted = 0
+      let orphanedDeleted = 0
+
+      for (const transaction of transactions) {
+        const status = String(
+          transaction.status || "",
+        ).toLowerCase()
+
+        const orphaned =
+          !transaction.gym ||
+          !existingGymIds.has(
+            String(transaction.gym),
+          )
+
+        const pendingOrFailed =
+          status === "pending" ||
+          status === "failed"
+
+        if (orphaned || pendingOrFailed) {
+          deletableIds.push(
+            transaction._id,
+          )
+
+          if (orphaned) {
+            orphanedDeleted += 1
+          } else if (status === "pending") {
+            pendingDeleted += 1
+          } else if (status === "failed") {
+            failedDeleted += 1
+          }
+        }
+      }
+
+      let deletedCount = 0
+
+      if (deletableIds.length) {
+        const result =
+          await PlatformTransaction.deleteMany({
+            _id: {
+              $in: deletableIds,
+            },
+          })
+
+        deletedCount =
+          result.deletedCount || 0
+      }
+
+      console.log(
+        "Platform revenue test cleanup:",
+        {
+          deletedCount,
+          orphanedDeleted,
+          pendingDeleted,
+          failedDeleted,
+        },
+      )
+
+      return res.json({
+        success: true,
+        message:
+          deletedCount > 0
+            ? `${deletedCount} test transaction${deletedCount === 1 ? "" : "s"} cleaned up successfully.`
+            : "No test transactions needed cleanup.",
+        deletedCount,
+        orphanedDeleted,
+        pendingDeleted,
+        failedDeleted,
+      })
+    } catch (error) {
+      console.error(
+        "Platform Revenue Cleanup Error:",
+        error,
+      )
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message ||
+          "Unable to clean platform test transactions.",
+      })
+    }
+  }
+
+
+/*
+|--------------------------------------------------------------------------
 | Platform settings
 |--------------------------------------------------------------------------
 */

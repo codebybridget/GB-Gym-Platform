@@ -18,6 +18,7 @@ export default function Login({
   const params = new URLSearchParams(
     location.search,
   )
+
   const { gymSlug: routeGymSlug = "" } =
     useParams()
 
@@ -282,14 +283,22 @@ export default function Login({
         }
 
         /*
-         * Gym admin accounts should use the
-         * appropriate administrator login.
+         * Gym administrator / gym owner.
+         *
+         * The registration controller creates the
+         * gym owner with role = "admin".
+         *
+         * Therefore a gym-scoped admin is allowed
+         * into the administrator dashboard.
          */
         if (
           role === "admin"
         ) {
-          setError(
-            "Gym administrator accounts should use the Admin Login for this gym.",
+          navigate(
+            "/admin",
+            {
+              replace: true,
+            },
           )
           return
         }
@@ -488,8 +497,7 @@ export default function Login({
                 value={email}
                 onChange={(event) =>
                   setEmail(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
                 placeholder="Enter your email"
@@ -513,8 +521,7 @@ export default function Login({
                 value={password}
                 onChange={(event) =>
                   setPassword(
-                    event.target
-                      .value,
+                    event.target.value,
                   )
                 }
                 placeholder="Enter your password"
@@ -528,8 +535,7 @@ export default function Login({
               ?.message && (
               <div className="rounded-xl border border-[#D9FF3F]/20 bg-[#D9FF3F]/5 px-4 py-3 text-sm text-[#D9FF3F]">
                 {
-                  location
-                    .state
+                  location.state
                     .message
                 }
               </div>

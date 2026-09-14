@@ -26,6 +26,7 @@ import PlatformSettings from "./pages/platform/Settings"
 import AdminLogin from "./pages/AdminLogin"
 import Register from "./pages/Register"
 import RegisterGym from "./pages/RegisterGym"
+import GymPlanSelection from "./pages/GymPlanSelection"
 import ForgotPassword from "./pages/ForgotPassword"
 import AdminForgotPassword from "./pages/AdminForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
@@ -917,6 +918,11 @@ function App() {
       <Route
         path="/register-gym"
         element={<RegisterGym />}
+      />
+
+      <Route
+        path="/register-gym/plan"
+        element={<GymPlanSelection />}
       />
 
       <Route
