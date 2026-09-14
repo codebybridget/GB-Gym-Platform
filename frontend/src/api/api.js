@@ -8,15 +8,12 @@ import axios from "axios"
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-    "https://gb-gym-platform.onrender.com/api"
+  "https://gb-gym-platform.onrender.com/api"
 
 /*
 |--------------------------------------------------------------------------
 | Backend Base URL
 |--------------------------------------------------------------------------
-|
-| Used for uploaded images/videos that are returned as relative paths.
-|
 */
 
 const BACKEND_BASE_URL =
@@ -28,23 +25,24 @@ const BACKEND_BASE_URL =
 |--------------------------------------------------------------------------
 */
 
-const api =
-  axios.create({
-    baseURL:
-      API_BASE_URL,
-
-    withCredentials: true,
-
-    headers: {
-      Accept:
-        "application/json",
-    },
-  })
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  headers: {
+    Accept: "application/json",
+  },
+})
 
 const req = async (request) => {
   const response = await request
   return response.data
 }
+
+/*
+|--------------------------------------------------------------------------
+| ACCESS TOKEN
+|--------------------------------------------------------------------------
+*/
 
 export const setAccessToken = (token) => {
   if (token) {
@@ -58,79 +56,56 @@ export const setAccessToken = (token) => {
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Get authentication token
-|--------------------------------------------------------------------------
-*/
-
 function getAuthToken() {
   return (
-    localStorage.getItem(
-      "token",
-    ) ||
-    localStorage.getItem(
-      "accessToken",
-    ) ||
-    localStorage.getItem(
-      "gb_access_token",
-    )
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("gb_access_token")
   )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Build media URL
+| BUILD MEDIA URL
 |--------------------------------------------------------------------------
 */
 
-export function buildMediaUrl(
-  mediaUrl,
-) {
+export function buildMediaUrl(mediaUrl) {
   if (!mediaUrl) {
     return ""
   }
 
-  const value =
-    String(mediaUrl).trim()
+  const value = String(mediaUrl).trim()
 
   if (!value) {
     return ""
   }
 
   if (
-    value.startsWith(
-      "http://",
-    ) ||
-    value.startsWith(
-      "https://",
-    ) ||
-    value.startsWith(
-      "blob:",
-    ) ||
-    value.startsWith(
-      "data:",
-    )
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("blob:") ||
+    value.startsWith("data:")
   ) {
     return value
   }
 
-  if (
-    value.startsWith("//")
-  ) {
-    return `${
-      window.location.protocol
-    }${value}`
+  if (value.startsWith("//")) {
+    return `${window.location.protocol}${value}`
   }
 
-  if (
-    value.startsWith("/")
-  ) {
+  if (value.startsWith("/")) {
     return `${BACKEND_BASE_URL}${value}`
   }
 
   return `${BACKEND_BASE_URL}/${value}`
 }
+
+/*
+|--------------------------------------------------------------------------
+| PLATFORM
+|--------------------------------------------------------------------------
+*/
 
 export const platform = {
   publicPlans: () =>
@@ -156,12 +131,23 @@ export const platform = {
       ),
     ),
 
+  /*
+  |--------------------------------------------------------------------------
+  | PLATFORM SUBSCRIPTIONS
+  |--------------------------------------------------------------------------
+  */
+
   subscriptions: () =>
     req(
-      api.get("/platform/subscriptions"),
+      api.get(
+        "/platform/subscriptions",
+      ),
     ),
 
-  updateSubscription: (id, data) =>
+  updateSubscription: (
+    id,
+    data,
+  ) =>
     req(
       api.put(
         `/platform/subscriptions/${id}`,
@@ -183,15 +169,45 @@ export const platform = {
       ),
     ),
 
+    deleteGym: (id) =>
+  req(
+    api.delete(
+      `/platform/gyms/${id}`,
+    ),
+  ),
+
+  deleteSubscription: (id) =>
+    req(
+      api.delete(
+        `/platform/subscriptions/${id}`,
+      ),
+    ),
+
+  /*
+  |--------------------------------------------------------------------------
+  | PLATFORM REVENUE
+  |--------------------------------------------------------------------------
+  */
+
   revenue: () =>
     req(
-      api.get("/platform/revenue"),
+      api.get(
+        "/platform/revenue",
+      ),
     ),
+
+  /*
+  |--------------------------------------------------------------------------
+  | PLATFORM PLANS
+  |--------------------------------------------------------------------------
+  */
 
   plans: {
     list: () =>
       req(
-        api.get("/platform/plans"),
+        api.get(
+          "/platform/plans",
+        ),
       ),
 
     create: (data) =>
@@ -202,7 +218,10 @@ export const platform = {
         ),
       ),
 
-    update: (id, data) =>
+    update: (
+      id,
+      data,
+    ) =>
       req(
         api.put(
           `/platform/plans/${id}`,
@@ -218,9 +237,17 @@ export const platform = {
       ),
   },
 
+  /*
+  |--------------------------------------------------------------------------
+  | PLATFORM SETTINGS
+  |--------------------------------------------------------------------------
+  */
+
   settings: () =>
     req(
-      api.get("/platform/settings"),
+      api.get(
+        "/platform/settings",
+      ),
     ),
 
   updateSettings: (data) =>
@@ -232,49 +259,88 @@ export const platform = {
     ),
 }
 
+/*
+|--------------------------------------------------------------------------
+| GYMS
+|--------------------------------------------------------------------------
+*/
+
 export const gyms = {
   register: (data) =>
     api
-      .post("/gyms/register", data)
-      .then((response) => response.data),
+      .post(
+        "/gyms/register",
+        data,
+      )
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   uploadLogo: (file) => {
     const form = new FormData()
-    form.append("logo", file)
+
+    form.append(
+      "logo",
+      file,
+    )
 
     return api
       .put(
         "/gyms/current/logo",
         form,
       )
-      .then((response) => response.data)
+      .then(
+        (response) =>
+          response.data,
+      )
   },
 
   emailSettings: () =>
     api
-      .get("/gyms/current/email-settings")
-      .then((response) => response.data),
+      .get(
+        "/gyms/current/email-settings",
+      )
+      .then(
+        (response) =>
+          response.data,
+      ),
 
-  updateEmailSettings: (payload) =>
+  updateEmailSettings: (
+    payload,
+  ) =>
     api
       .put(
         "/gyms/current/email-settings",
         payload,
       )
-      .then((response) => response.data),
+      .then(
+        (response) =>
+          response.data,
+      ),
 
-  testEmailSettings: (payload = {}) =>
+  testEmailSettings: (
+    payload = {},
+  ) =>
     api
       .post(
         "/gyms/current/email-settings/test",
         payload,
       )
-      .then((response) => response.data),
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   publicPlans: () =>
     api
-      .get("/gyms/public-plans")
-      .then((response) => response.data),
+      .get(
+        "/gyms/public-plans",
+      )
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   entry: (slug) =>
     api
@@ -283,12 +349,20 @@ export const gyms = {
           String(slug || "").trim(),
         )}`,
       )
-      .then((response) => response.data),
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   current: () =>
     api
-      .get("/gyms/current")
-      .then((response) => response.data),
+      .get(
+        "/gyms/current",
+      )
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   update: (payload) =>
     api
@@ -296,33 +370,54 @@ export const gyms = {
         "/gyms/current",
         payload,
       )
-      .then((response) => response.data),
+      .then(
+        (response) =>
+          response.data,
+      ),
 
   paymentSettings: () =>
     api
-      .get("/gyms/current/payment-settings")
-      .then((response) => response.data),
+      .get(
+        "/gyms/current/payment-settings",
+      )
+      .then(
+        (response) =>
+          response.data,
+      ),
 
-  updatePaymentSettings: (payload) =>
+  updatePaymentSettings: (
+    payload,
+  ) =>
     api
       .put(
         "/gyms/current/payment-settings",
         payload,
       )
-      .then((response) => response.data),
-}
-
-export const getMyWorkoutHistory = async () => {
-  const response = await api.get(
-    "/workout-logs/me/history",
-  )
-
-  return response.data
+      .then(
+        (response) =>
+          response.data,
+      ),
 }
 
 /*
 |--------------------------------------------------------------------------
-| Attach authentication token
+| MEMBER WORKOUT HISTORY
+|--------------------------------------------------------------------------
+*/
+
+export const getMyWorkoutHistory =
+  async () => {
+    const response =
+      await api.get(
+        "/workout-logs/me/history",
+      )
+
+    return response.data
+  }
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATION TOKEN INTERCEPTOR
 |--------------------------------------------------------------------------
 */
 
@@ -341,7 +436,7 @@ api.interceptors.request.use(
 
     /*
     |--------------------------------------------------------------------------
-    | IMPORTANT: FormData uploads
+    | FormData uploads
     |--------------------------------------------------------------------------
     */
 
@@ -349,9 +444,7 @@ api.interceptors.request.use(
       config.data instanceof
       FormData
     ) {
-      if (
-        config.headers
-      ) {
+      if (config.headers) {
         delete config.headers[
           "Content-Type"
         ]
@@ -381,25 +474,25 @@ api.interceptors.request.use(
 
     return config
   },
-
-  (error) => {
-    return Promise.reject(
-      error,
-    )
-  },
+  (error) =>
+    Promise.reject(error),
 )
 
 /*
 |--------------------------------------------------------------------------
-| Handle authentication errors
+| RESPONSE / REFRESH TOKEN INTERCEPTOR
 |--------------------------------------------------------------------------
 */
 
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
-    const originalRequest = error?.config
-    const status = error?.response?.status
+    const originalRequest =
+      error?.config
+
+    const status =
+      error?.response?.status
 
     const url = String(
       originalRequest?.url || "",
@@ -422,7 +515,8 @@ api.interceptors.response.use(
       !isRefreshRequest &&
       !isTrainerAuthRequest
     ) {
-      originalRequest._gbRetry = true
+      originalRequest._gbRetry =
+        true
 
       try {
         const refreshResponse =
@@ -434,17 +528,24 @@ api.interceptors.response.use(
           refreshResponse?.data?.token
 
         if (newToken) {
-          setAccessToken(newToken)
+          setAccessToken(
+            newToken,
+          )
 
           originalRequest.headers =
-            originalRequest.headers || {}
+            originalRequest.headers ||
+            {}
 
           originalRequest.headers.Authorization =
             `Bearer ${newToken}`
 
-          return api(originalRequest)
+          return api(
+            originalRequest,
+          )
         }
-      } catch (refreshError) {
+      } catch (
+        refreshError
+      ) {
         setAccessToken(null)
 
         localStorage.removeItem(
@@ -461,19 +562,15 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error)
+    return Promise.reject(
+      error,
+    )
   },
 )
 
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATION
-|--------------------------------------------------------------------------
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Login
 |--------------------------------------------------------------------------
 */
 
@@ -516,17 +613,6 @@ export const loginUser =
     return data
   }
 
-/*
-|--------------------------------------------------------------------------
-| Determine login method
-|--------------------------------------------------------------------------
-|
-| The public login screen does not expose Admin / Member / Trainer tabs.
-| The backend determines whether the supplied email should use a password
-| or the trainer one-time code flow.
-|
-*/
-
 export const getLoginMethod =
   async (
     email,
@@ -542,12 +628,6 @@ export const getLoginMethod =
     return response.data
   }
 
-/*
-|--------------------------------------------------------------------------
-| Get current authenticated user
-|--------------------------------------------------------------------------
-*/
-
 export const getMe =
   async () => {
     const response =
@@ -557,12 +637,6 @@ export const getMe =
 
     return response.data
   }
-
-/*
-|--------------------------------------------------------------------------
-| Register member
-|--------------------------------------------------------------------------
-*/
 
 export const registerUser =
   async (
@@ -601,13 +675,6 @@ export const registerUser =
 |--------------------------------------------------------------------------
 */
 
-/*
- * Get the currently authenticated
- * member profile from MongoDB.
- *
- * GET /api/profile/me
- */
-
 export const getMyProfile =
   async () => {
     const response =
@@ -617,11 +684,6 @@ export const getMyProfile =
 
     const data =
       response.data
-
-    /*
-     * Keep the locally cached user
-     * synchronized with the backend.
-     */
 
     if (data?.user) {
       localStorage.setItem(
@@ -634,12 +696,6 @@ export const getMyProfile =
 
     return data
   }
-
-/*
-|--------------------------------------------------------------------------
-| Update Member Profile
-|--------------------------------------------------------------------------
-*/
 
 export const updateMyProfile =
   async (
@@ -654,11 +710,6 @@ export const updateMyProfile =
     const result =
       response.data
 
-    /*
-     * Keep local authentication
-     * user information synchronized.
-     */
-
     if (result?.user) {
       localStorage.setItem(
         "user",
@@ -670,18 +721,6 @@ export const updateMyProfile =
 
     return result
   }
-
-/*
-|--------------------------------------------------------------------------
-| Upload Profile Photo
-|--------------------------------------------------------------------------
-|
-| PUT /api/profile/me/photo
-|
-| Sends the selected image as
-| multipart/form-data.
-|
-*/
 
 export const uploadProfilePhoto =
   async (
@@ -729,11 +768,6 @@ export const uploadProfilePhoto =
     const result =
       response.data
 
-    /*
-     * Keep cached authentication
-     * user synchronized.
-     */
-
     if (result?.user) {
       localStorage.setItem(
         "user",
@@ -745,12 +779,6 @@ export const uploadProfilePhoto =
 
     return result
   }
-
-/*
-|--------------------------------------------------------------------------
-| Update medical profile
-|--------------------------------------------------------------------------
-*/
 
 export const updateMedicalProfile =
   async (
@@ -776,12 +804,6 @@ export const updateMedicalProfile =
 
     return result
   }
-
-/*
-|--------------------------------------------------------------------------
-| Update fitness goal
-|--------------------------------------------------------------------------
-*/
 
 export const updateFitnessGoal =
   async (
@@ -895,12 +917,6 @@ export const verifyPaystackPayment =
 |--------------------------------------------------------------------------
 */
 
-/*
- * Get active membership plans.
- *
- * GET /api/membership
- */
-
 export const getMembershipPlans =
   async () => {
     const response =
@@ -911,14 +927,6 @@ export const getMembershipPlans =
     return response.data
   }
 
-/*
- * Get all membership plans.
- *
- * Admin only.
- *
- * GET /api/membership/all
- */
-
 export const getAllMembershipPlans =
   async () => {
     const response =
@@ -928,14 +936,6 @@ export const getAllMembershipPlans =
 
     return response.data
   }
-
-/*
- * Create membership plan.
- *
- * Admin only.
- *
- * POST /api/membership
- */
 
 export const createMembershipPlan =
   async (
@@ -949,14 +949,6 @@ export const createMembershipPlan =
 
     return response.data
   }
-
-/*
- * Update membership plan.
- *
- * Admin only.
- *
- * PUT /api/membership/:id
- */
 
 export const updateMembershipPlan =
   async (
@@ -972,14 +964,6 @@ export const updateMembershipPlan =
     return response.data
   }
 
-/*
- * Deactivate membership plan.
- *
- * Admin only.
- *
- * DELETE /api/membership/:id
- */
-
 export const deleteMembershipPlan =
   async (
     id,
@@ -994,7 +978,7 @@ export const deleteMembershipPlan =
 
 /*
 |--------------------------------------------------------------------------
-| Get exercises
+| EXERCISE API
 |--------------------------------------------------------------------------
 */
 
@@ -1015,12 +999,6 @@ export const getExercises =
     )
   }
 
-/*
-|--------------------------------------------------------------------------
-| Get exercise by ID
-|--------------------------------------------------------------------------
-*/
-
 export const getExerciseById =
   async (
     id,
@@ -1034,12 +1012,6 @@ export const getExerciseById =
       response.data,
     )
   }
-
-/*
-|--------------------------------------------------------------------------
-| Create Exercise With Media
-|--------------------------------------------------------------------------
-*/
 
 export const createExerciseWithMedia =
   async (
@@ -1173,7 +1145,10 @@ export const createExerciseWithMedia =
       ),
     )
 
-    if (data.isActive !== undefined) {
+    if (
+      data.isActive !==
+      undefined
+    ) {
       formData.append(
         "isActive",
         String(data.isActive),
@@ -1210,12 +1185,6 @@ export const createExerciseWithMedia =
       response.data,
     )
   }
-
-/*
-|--------------------------------------------------------------------------
-| Update Exercise With Media
-|--------------------------------------------------------------------------
-*/
 
 export const updateExerciseWithMedia =
   async (
@@ -1370,12 +1339,6 @@ export const updateExerciseWithMedia =
     )
   }
 
-/*
-|--------------------------------------------------------------------------
-| Backward-compatible Create Exercise
-|--------------------------------------------------------------------------
-*/
-
 export const createExercise =
   async (
     data,
@@ -1399,12 +1362,6 @@ export const createExercise =
       data,
     )
   }
-
-/*
-|--------------------------------------------------------------------------
-| Backward-compatible Update Exercise
-|--------------------------------------------------------------------------
-*/
 
 export const updateExercise =
   async (
@@ -1431,12 +1388,6 @@ export const updateExercise =
       data,
     )
   }
-
-/*
-|--------------------------------------------------------------------------
-| Delete / deactivate exercise
-|--------------------------------------------------------------------------
-*/
 
 export const deleteExercise =
   async (
@@ -1599,7 +1550,7 @@ export const updateMemberStatus =
 
 /*
 |--------------------------------------------------------------------------
-| Get current member subscription
+| MEMBER SUBSCRIPTION
 |--------------------------------------------------------------------------
 */
 
@@ -1863,6 +1814,12 @@ export const getAdminMemberWorkoutProgress =
     return response.data
   }
 
+/*
+|--------------------------------------------------------------------------
+| PAYMENT
+|--------------------------------------------------------------------------
+*/
+
 export const initializePayment =
   async (
     planId,
@@ -1905,12 +1862,6 @@ export const getWeeklySchedule =
     return response.data
   }
 
-/*
-|--------------------------------------------------------------------------
-| CREATE SCHEDULE
-|--------------------------------------------------------------------------
-*/
-
 export const createSchedule =
   async (
     data,
@@ -1923,12 +1874,6 @@ export const createSchedule =
 
     return response.data
   }
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE SCHEDULE
-|--------------------------------------------------------------------------
-*/
 
 export const updateSchedule =
   async (
@@ -1947,14 +1892,6 @@ export const updateSchedule =
 /*
 |--------------------------------------------------------------------------
 | PASSWORD RESET
-|--------------------------------------------------------------------------
-| Member:
-|   POST /api/auth/forgot-password
-|   POST /api/auth/reset-password
-|
-| Admin:
-|   POST /api/admin-auth/forgot-password
-|   POST /api/admin-auth/reset-password
 |--------------------------------------------------------------------------
 */
 
@@ -2277,12 +2214,15 @@ export const trainer = {
     req(
       api.get(
         `/trainer/members/${memberId}/progress`,
-        {
-          params,
-        },
       ),
     ),
 }
+
+/*
+|--------------------------------------------------------------------------
+| NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
 
 export const notifications = {
   list: () =>
@@ -2381,9 +2321,6 @@ export const subscriptions = {
 |--------------------------------------------------------------------------
 | PAYMENTS COMPATIBILITY API
 |--------------------------------------------------------------------------
-| Provides the grouped payments API expected by PaymentCallback.jsx and
-| other screens while preserving the existing payment functions.
-|--------------------------------------------------------------------------
 */
 
 export const payments = {
@@ -2436,9 +2373,6 @@ export const payments = {
 /*
 |--------------------------------------------------------------------------
 | AUTH COMPATIBILITY API
-|--------------------------------------------------------------------------
-| Provides the grouped auth API expected by Register.jsx, Login.jsx,
-| and other converted screens while preserving the existing named exports.
 |--------------------------------------------------------------------------
 */
 

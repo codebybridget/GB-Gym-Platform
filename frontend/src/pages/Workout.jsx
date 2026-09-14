@@ -7,6 +7,9 @@ import {
   Flame,
   Play,
   Pause,
+  RotateCcw,
+  Target,
+  Trophy,
 } from "lucide-react"
 
 import {
@@ -27,7 +30,47 @@ import {
 
 import api from "../api/api.js"
 
-import { useGym } from "../context/GymContext"
+import { useGym } from "../context/GymContext.jsx"
+
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion"
+
+
+const pageVariants = {
+  hidden: {
+    opacity: 0,
+  },
+
+  visible: {
+    opacity: 1,
+
+    transition: {
+      duration: 0.4,
+      staggerChildren: 0.055,
+    },
+  },
+}
+
+
+const itemVariants = {
+  hidden: {
+    opacity: 0,
+    y: 16,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+
+    transition: {
+      duration: 0.35,
+      ease: "easeOut",
+    },
+  },
+}
+
 
 function Workout() {
   const navigate =
@@ -37,7 +80,11 @@ function Workout() {
     useLocation()
 
   const { gym } =
-    useGym()
+    useGym() || {}
+
+  const gymName =
+    gym?.name?.trim() ||
+    "Gym"
 
   /*
   |--------------------------------------------------------------------------
@@ -45,28 +92,24 @@ function Workout() {
   |
   | 1. React Router state
   | 2. URL query parameters
-  |
-  | This allows the workout page to work whether the user came from:
-  |
-  | Home
-  | Weekly Schedule
-  | Direct URL
   |--------------------------------------------------------------------------
   */
 
-  const queryParams = useMemo(
-    () =>
-      new URLSearchParams(
-        location.search,
-      ),
-    [location.search],
-  )
+  const queryParams =
+    useMemo(
+      () =>
+        new URLSearchParams(
+          location.search,
+        ),
+      [location.search],
+    )
 
   const routeState =
     location.state || {}
 
   const stateWorkout =
-    routeState.workout || null
+    routeState.workout ||
+    null
 
   const assignmentId =
     queryParams.get(
@@ -83,24 +126,35 @@ function Workout() {
     routeState.date ||
     null
 
-  // Preserve the saved duration when opening a completed workout from Home.
-  // This is a display fallback if the /workout-logs/me response omits the
-  // custom timer fields from the Mongoose document.
   const navigationDurationSeconds =
     routeState.durationSeconds ??
     stateWorkout?.durationSeconds ??
-    (queryParams.has("durationSeconds")
-      ? Number(queryParams.get("durationSeconds"))
-      : null)
+    (
+      queryParams.has(
+        "durationSeconds",
+      )
+        ? Number(
+            queryParams.get(
+              "durationSeconds",
+            ),
+          )
+        : null
+    )
 
-  const [assignment, setAssignment] =
-    useState(null)
+  const [
+    assignment,
+    setAssignment,
+  ] = useState(null)
 
-  const [loading, setLoading] =
-    useState(true)
+  const [
+    loading,
+    setLoading,
+  ] = useState(true)
 
-  const [error, setError] =
-    useState("")
+  const [
+    error,
+    setError,
+  ] = useState("")
 
   const [
     completedSets,
@@ -141,10 +195,18 @@ function Workout() {
     workoutDurationSeconds,
     setWorkoutDurationSeconds,
   ] = useState(
-    navigationDurationSeconds !== null &&
-      navigationDurationSeconds !== undefined &&
-      Number.isFinite(Number(navigationDurationSeconds))
-      ? Number(navigationDurationSeconds)
+    navigationDurationSeconds !==
+      null &&
+      navigationDurationSeconds !==
+        undefined &&
+      Number.isFinite(
+        Number(
+          navigationDurationSeconds,
+        ),
+      )
+      ? Number(
+          navigationDurationSeconds,
+        )
       : null,
   )
 
@@ -152,10 +214,18 @@ function Workout() {
     workoutTimerSeconds,
     setWorkoutTimerSeconds,
   ] = useState(
-    navigationDurationSeconds !== null &&
-      navigationDurationSeconds !== undefined &&
-      Number.isFinite(Number(navigationDurationSeconds))
-      ? Number(navigationDurationSeconds)
+    navigationDurationSeconds !==
+      null &&
+      navigationDurationSeconds !==
+        undefined &&
+      Number.isFinite(
+        Number(
+          navigationDurationSeconds,
+        ),
+      )
+      ? Number(
+          navigationDurationSeconds,
+        )
       : 0,
   )
 
@@ -184,6 +254,7 @@ function Workout() {
     setShowResetConfirm,
   ] = useState(false)
 
+
   /*
   |--------------------------------------------------------------------------
   | Load assigned workout
@@ -199,13 +270,6 @@ function Workout() {
           setLoading(true)
           setError("")
 
-          /*
-          |--------------------------------------------------------------------------
-          | If Home already supplied the complete workout,
-          | use it immediately.
-          |--------------------------------------------------------------------------
-          */
-
           if (
             stateWorkout?.program
           ) {
@@ -219,12 +283,6 @@ function Workout() {
                 localAssignment,
               )
             }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Try to retrieve the existing workout log.
-            |--------------------------------------------------------------------------
-            */
 
             await restoreExistingLog(
               localAssignment,
@@ -242,12 +300,6 @@ function Workout() {
 
             return
           }
-
-          /*
-          |--------------------------------------------------------------------------
-          | Today's workout endpoint
-          |--------------------------------------------------------------------------
-          */
 
           let selectedAssignment =
             null
@@ -269,18 +321,6 @@ function Workout() {
             )
           }
 
-          /*
-          |--------------------------------------------------------------------------
-          | Get all member assignments.
-          |
-          | This is important for:
-          |
-          | - Tomorrow
-          | - Future dates
-          | - Weekly schedule
-          |--------------------------------------------------------------------------
-          */
-
           const programsResponse =
             await getMyPrograms()
 
@@ -288,12 +328,6 @@ function Workout() {
             extractAssignments(
               programsResponse,
             )
-
-          /*
-          |--------------------------------------------------------------------------
-          | Exact assignment ID
-          |--------------------------------------------------------------------------
-          */
 
           if (
             assignmentId &&
@@ -324,12 +358,6 @@ function Workout() {
             }
           }
 
-          /*
-          |--------------------------------------------------------------------------
-          | Requested date
-          |--------------------------------------------------------------------------
-          */
-
           if (
             !selectedAssignment &&
             requestedDate &&
@@ -349,12 +377,6 @@ function Workout() {
             }
           }
 
-          /*
-          |--------------------------------------------------------------------------
-          | Final current assignment fallback
-          |--------------------------------------------------------------------------
-          */
-
           if (
             !selectedAssignment &&
             assignments.length > 0
@@ -364,12 +386,6 @@ function Workout() {
                 assignments,
               )
           }
-
-          /*
-          |--------------------------------------------------------------------------
-          | No assignment
-          |--------------------------------------------------------------------------
-          */
 
           if (!mounted) {
             return
@@ -387,12 +403,6 @@ function Workout() {
             return
           }
 
-          /*
-          |--------------------------------------------------------------------------
-          | Normalize assignment
-          |--------------------------------------------------------------------------
-          */
-
           selectedAssignment =
             normalizeWorkoutAssignment(
               selectedAssignment,
@@ -401,12 +411,6 @@ function Workout() {
           setAssignment(
             selectedAssignment,
           )
-
-          /*
-          |--------------------------------------------------------------------------
-          | Restore existing log
-          |--------------------------------------------------------------------------
-          */
 
           await restoreExistingLog(
             selectedAssignment,
@@ -421,15 +425,17 @@ function Workout() {
             setWorkoutDurationSeconds,
             navigationDurationSeconds,
           )
-        } catch (error) {
+        } catch (
+          loadError
+        ) {
           console.error(
             "Unable to load workout:",
-            error,
+            loadError,
           )
 
           if (mounted) {
             setError(
-              error?.response?.data
+              loadError?.response?.data
                 ?.message ||
                 "Unable to load your workout.",
             )
@@ -453,6 +459,7 @@ function Workout() {
     navigationDurationSeconds,
   ])
 
+
   /*
   |--------------------------------------------------------------------------
   | Program
@@ -460,7 +467,8 @@ function Workout() {
   */
 
   const program =
-    assignment?.program || null
+    assignment?.program ||
+    null
 
   const exercises =
     Array.isArray(
@@ -474,13 +482,16 @@ function Workout() {
             second,
           ) =>
             Number(
-              first?.order || 0,
+              first?.order ||
+                0,
             ) -
             Number(
-              second?.order || 0,
+              second?.order ||
+                0,
             ),
         )
       : []
+
 
   /*
   |--------------------------------------------------------------------------
@@ -501,6 +512,7 @@ function Workout() {
       0,
     )
 
+
   /*
   |--------------------------------------------------------------------------
   | Completed sets
@@ -511,6 +523,7 @@ function Workout() {
     Object.values(
       completedSets,
     ).filter(Boolean).length
+
 
   /*
   |--------------------------------------------------------------------------
@@ -530,37 +543,54 @@ function Workout() {
         )
       : 0
 
-  // Estimated activity metrics. The web app does not have access to a
-  // reliable pedometer on desktop browsers, so steps are estimated from
-  // active workout time rather than pretending they are device-measured.
-  const estimatedSteps = Math.max(
-    0,
-    Math.round(
-      (Number(workoutTimerSeconds) / 60) * 100,
-    ),
-  )
 
-  const estimatedLiveCalories = Math.max(
-    0,
-    Math.round(
-      (Number(workoutTimerSeconds) / 60) *
-        7 *
-        Math.max(
-          0.75,
-          Math.min(
-            1.25,
-            exercises.length / 8,
+  /*
+  |--------------------------------------------------------------------------
+  | Estimated activity metrics
+  |--------------------------------------------------------------------------
+  */
+
+  const estimatedSteps =
+    Math.max(
+      0,
+      Math.round(
+        (Number(
+          workoutTimerSeconds,
+        ) /
+          60) *
+          100,
+      ),
+    )
+
+  const estimatedLiveCalories =
+    Math.max(
+      0,
+      Math.round(
+        (Number(
+          workoutTimerSeconds,
+        ) /
+          60) *
+          7 *
+          Math.max(
+            0.75,
+            Math.min(
+              1.25,
+              exercises.length /
+                8,
+            ),
           ),
-        ),
-    ),
-  )
+      ),
+    )
 
   const displayedCalories =
     workoutCompleted
       ? Math.round(
-          Number(caloriesBurned || 0),
+          Number(
+            caloriesBurned || 0,
+          ),
         )
       : estimatedLiveCalories
+
 
   /*
   |--------------------------------------------------------------------------
@@ -608,12 +638,6 @@ function Workout() {
       setError("")
 
       try {
-        /*
-        |--------------------------------------------------------------------------
-        | Uncomplete
-        |--------------------------------------------------------------------------
-        */
-
         if (
           currentlyCompleted
         ) {
@@ -622,6 +646,7 @@ function Workout() {
               "/workout-logs/set/uncomplete",
               {
                 exerciseId,
+
                 setNumber,
 
                 workoutDate:
@@ -666,12 +691,6 @@ function Workout() {
 
           return
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Complete
-        |--------------------------------------------------------------------------
-        */
 
         const response =
           await api.post(
@@ -736,15 +755,16 @@ function Workout() {
             }),
           )
         }
-
-      } catch (error) {
+      } catch (
+        saveError
+      ) {
         console.error(
           "Unable to update set:",
-          error,
+          saveError,
         )
 
         setError(
-          error?.response?.data
+          saveError?.response?.data
             ?.message ||
             "Unable to save this set.",
         )
@@ -753,6 +773,7 @@ function Workout() {
       }
     }
 
+
   /*
   |--------------------------------------------------------------------------
   | Workout timer
@@ -760,54 +781,69 @@ function Workout() {
   */
 
   useEffect(() => {
-    const calculateElapsed = () => {
-      if (!workoutStartedAt) {
-        return 0
-      }
+    const calculateElapsed =
+      () => {
+        if (!workoutStartedAt) {
+          return 0
+        }
 
-      if (workoutDurationSeconds !== null && workoutCompleted) {
-        return Math.max(0, Number(workoutDurationSeconds) || 0)
-      }
+        if (
+          workoutDurationSeconds !==
+            null &&
+          workoutCompleted
+        ) {
+          return Math.max(
+            0,
+            Number(
+              workoutDurationSeconds,
+            ) || 0,
+          )
+        }
 
-      const started = new Date(workoutStartedAt).getTime()
+        const started =
+          new Date(
+            workoutStartedAt,
+          ).getTime()
 
-      if (!Number.isFinite(started)) {
-        return 0
-      }
+        if (
+          !Number.isFinite(
+            started,
+          )
+        ) {
+          return 0
+        }
 
-      const reference = workoutPausedAt
-        ? new Date(workoutPausedAt).getTime()
-        : Date.now()
+        const reference =
+          workoutPausedAt
+            ? new Date(
+                workoutPausedAt,
+              ).getTime()
+            : Date.now()
 
-      if (!Number.isFinite(reference)) {
-        return 0
-      }
+        if (
+          !Number.isFinite(
+            reference,
+          )
+        ) {
+          return 0
+        }
 
-      const pausedSeconds =
-        Number(totalPausedSeconds || 0)
-
-      const currentPauseSeconds =
-        workoutPausedAt
-          ? Math.max(
+        const pausedSeconds =
+          Number(
+            totalPausedSeconds ||
               0,
-              Math.round(
-                (Date.now() -
-                  new Date(
-                    workoutPausedAt,
-                  ).getTime()) /
-                  1000,
-              ),
-            )
-          : 0
+          )
 
-      return Math.max(
-        0,
-        Math.round(
-          (reference - started) / 1000 -
-            pausedSeconds,
-        ),
-      )
-    }
+        return Math.max(
+          0,
+          Math.round(
+            (reference -
+              started) /
+              1000 -
+              pausedSeconds,
+          ),
+        )
+      }
 
     setWorkoutTimerSeconds(
       calculateElapsed(),
@@ -822,11 +858,14 @@ function Workout() {
     }
 
     const interval =
-      window.setInterval(() => {
-        setWorkoutTimerSeconds(
-          calculateElapsed(),
-        )
-      }, 1000)
+      window.setInterval(
+        () => {
+          setWorkoutTimerSeconds(
+            calculateElapsed(),
+          )
+        },
+        1000,
+      )
 
     return () =>
       window.clearInterval(
@@ -840,8 +879,17 @@ function Workout() {
     workoutCompleted,
   ])
 
+
+  /*
+  |--------------------------------------------------------------------------
+  | Timer action
+  |--------------------------------------------------------------------------
+  */
+
   const handleTimerAction =
-    async (action) => {
+    async (
+      action,
+    ) => {
       if (
         !assignment ||
         timerAction
@@ -889,14 +937,16 @@ function Workout() {
             setWorkoutTimerSeconds,
           )
         }
-      } catch (error) {
+      } catch (
+        timerError
+      ) {
         console.error(
           `Unable to ${action} workout:`,
-          error,
+          timerError,
         )
 
         setError(
-          error?.response?.data
+          timerError?.response?.data
             ?.message ||
             `Unable to ${action} workout.`,
         )
@@ -904,6 +954,13 @@ function Workout() {
         setTimerAction("")
       }
     }
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | Reset
+  |--------------------------------------------------------------------------
+  */
 
   const handleResetWorkout =
     async () => {
@@ -971,14 +1028,16 @@ function Workout() {
             setWorkoutTimerSeconds,
           )
         }
-      } catch (error) {
+      } catch (
+        resetError
+      ) {
         console.error(
           "Unable to reset workout:",
-          error,
+          resetError,
         )
 
         setError(
-          error?.response?.data
+          resetError?.response?.data
             ?.message ||
             "Unable to reset this workout.",
         )
@@ -989,10 +1048,6 @@ function Workout() {
       }
     }
 
-  const formattedWorkoutDuration =
-    formatDuration(
-      workoutTimerSeconds,
-    )
 
   /*
   |--------------------------------------------------------------------------
@@ -1022,6 +1077,7 @@ function Workout() {
         }),
       )
     }
+
 
   /*
   |--------------------------------------------------------------------------
@@ -1146,14 +1202,16 @@ function Workout() {
         setWorkoutCompleted(
           true,
         )
-      } catch (error) {
+      } catch (
+        completeError
+      ) {
         console.error(
           "Unable to complete workout:",
-          error,
+          completeError,
         )
 
         setError(
-          error?.response?.data
+          completeError?.response?.data
             ?.message ||
             "Unable to complete your workout.",
         )
@@ -1164,6 +1222,13 @@ function Workout() {
       }
     }
 
+
+  const formattedWorkoutDuration =
+    formatDuration(
+      workoutTimerSeconds,
+    )
+
+
   /*
   |--------------------------------------------------------------------------
   | Loading
@@ -1172,10 +1237,10 @@ function Workout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-[#020617] text-white">
         <WorkoutHeader
           title="Workout"
-          gymName={gym?.name}
+          gymName={gymName}
           onBack={() =>
             navigate(
               "/dashboard",
@@ -1184,19 +1249,38 @@ function Workout() {
         />
 
         <main className="mx-auto max-w-md px-5 py-10">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-lime-400" />
-            </div>
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 12,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="rounded-3xl border border-white/10 bg-[#07111f] p-8 text-center"
+          >
+            <motion.div
+              animate={{
+                rotate: 360,
+              }}
+              transition={{
+                duration: 1.3,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+              className="mx-auto h-9 w-9 rounded-full border-2 border-white/10 border-t-lime-400"
+            />
 
-            <p className="mt-4 text-center text-sm font-bold text-gray-500">
+            <p className="mt-4 text-sm font-bold text-gray-500">
               Loading your workout...
             </p>
-          </div>
+          </motion.div>
         </main>
       </div>
     )
   }
+
 
   /*
   |--------------------------------------------------------------------------
@@ -1206,10 +1290,10 @@ function Workout() {
 
   if (!assignment) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-[#020617] text-white">
         <WorkoutHeader
           title="Workout"
-          gymName={gym?.name}
+          gymName={gymName}
           onBack={() =>
             navigate(
               "/dashboard",
@@ -1218,7 +1302,17 @@ function Workout() {
         />
 
         <main className="mx-auto max-w-md px-5 py-10">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 15,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="rounded-3xl border border-white/10 bg-[#07111f] p-7 text-center"
+          >
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-400 text-black">
               <Dumbbell
                 size={28}
@@ -1241,15 +1335,16 @@ function Workout() {
                   "/weekly-schedule",
                 )
               }
-              className="mt-6 w-full rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-black text-black"
+              className="mt-6 w-full rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-black text-black transition hover:bg-yellow-300"
             >
               VIEW WEEKLY SCHEDULE
             </button>
-          </div>
+          </motion.div>
         </main>
       </div>
     )
   }
+
 
   /*
   |--------------------------------------------------------------------------
@@ -1261,13 +1356,13 @@ function Workout() {
     exercises.length === 0
   ) {
     return (
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-[#020617] text-white">
         <WorkoutHeader
           title={
             program?.name ||
             "Workout"
           }
-          gymName={gym?.name}
+          gymName={gymName}
           onBack={() =>
             navigate(
               "/dashboard",
@@ -1276,7 +1371,17 @@ function Workout() {
         />
 
         <main className="mx-auto max-w-md px-5 py-10">
-          <div className="rounded-3xl border border-yellow-400/20 bg-yellow-400/5 p-6 text-center">
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 15,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="rounded-3xl border border-yellow-400/20 bg-yellow-400/5 p-7 text-center"
+          >
             <Dumbbell
               size={32}
               className="mx-auto text-yellow-400"
@@ -1303,11 +1408,12 @@ function Workout() {
             >
               BACK TO DASHBOARD
             </button>
-          </div>
+          </motion.div>
         </main>
       </div>
     )
   }
+
 
   /*
   |--------------------------------------------------------------------------
@@ -1316,13 +1422,18 @@ function Workout() {
   */
 
   return (
-    <div className="min-h-screen bg-black pb-32 text-white">
+    <motion.div
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+      className="min-h-screen bg-[#020617] pb-32 text-white"
+    >
       <WorkoutHeader
         title={
           program?.name ||
           "Workout"
         }
-        gymName={gym?.name}
+        gymName={gymName}
         onBack={() =>
           navigate(
             "/dashboard",
@@ -1331,147 +1442,219 @@ function Workout() {
       />
 
       <main className="mx-auto w-full max-w-md px-5 py-6">
-        {/* ---------------------------------------------------------------- */}
-        {/* Workout header */}
-        {/* ---------------------------------------------------------------- */}
 
-        <section className="rounded-3xl bg-white p-5 text-black">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-1 rounded-full bg-lime-400 px-3 py-1 text-[9px] font-black text-black">
-                <CheckCircle2
-                  size={11}
-                />
-                ASSIGNED
-              </span>
+        {/* Workout overview */}
 
-              <h2 className="mt-3 text-2xl font-black">
-                {program?.name}
-              </h2>
+        <motion.section
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-3xl bg-yellow-400 p-5 text-black shadow-xl shadow-yellow-950/10"
+        >
+          <motion.div
+            animate={{
+              x: [0, 12, 0],
+              y: [0, -8, 0],
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-white/30 blur-3xl"
+          />
 
-              {program?.description && (
-                <p className="mt-2 text-xs leading-5 text-gray-500">
-                  {program.description}
-                </p>
-              )}
-            </div>
+          <div className="relative">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[9px] font-black text-yellow-400">
+                  <CheckCircle2
+                    size={11}
+                  />
+                  ASSIGNED
+                </span>
 
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-yellow-400">
-              <Dumbbell
-                size={23}
-              />
-            </div>
-          </div>
+                <h2 className="mt-3 text-2xl font-black">
+                  {program?.name}
+                </h2>
 
-          {/* Workout information */}
+                {program?.description && (
+                  <p className="mt-2 text-xs leading-5 text-black/60">
+                    {
+                      program.description
+                    }
+                  </p>
+                )}
+              </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <InfoBox
-              label="Difficulty"
-              value={
-                program?.difficulty ||
-                "Beginner"
-              }
-            />
-
-            <InfoBox
-              label="Duration"
-              value={
-                program?.estimatedDuration
-                  ? `${program.estimatedDuration} min`
-                  : "Not specified"
-              }
-            />
-
-            <InfoBox
-              label="Exercises"
-              value={
-                exercises.length
-              }
-            />
-
-            <InfoBox
-              label="Sets"
-              value={totalSets}
-            />
-
-            <InfoBox
-              label="Scheduled Time"
-              value={formatScheduledTime(assignment)}
-              highlight
-            />
-          </div>
-
-          {/* Progress */}
-
-          <div className="mt-5">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-gray-500">
-                Workout progress
-              </span>
-
-              <span className="text-lime-600">
-                {completedSetCount} /{" "}
-                {totalSets} sets
-              </span>
-            </div>
-
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-200">
-              <div
-                className="h-full rounded-full bg-lime-400 transition-all duration-500"
-                style={{
-                  width: `${completionPercentage}%`,
+              <motion.div
+                animate={{
+                  rotate: [0, 5, -5, 0],
                 }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-yellow-400"
+              >
+                <Dumbbell
+                  size={23}
+                />
+              </motion.div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <InfoBox
+                label="Difficulty"
+                value={
+                  program?.difficulty ||
+                  "Beginner"
+                }
+                light
+              />
+
+              <InfoBox
+                label="Duration"
+                value={
+                  program?.estimatedDuration
+                    ? `${program.estimatedDuration} min`
+                    : "Not specified"
+                }
+                light
+              />
+
+              <InfoBox
+                label="Exercises"
+                value={
+                  exercises.length
+                }
+                light
+              />
+
+              <InfoBox
+                label="Sets"
+                value={totalSets}
+                light
+              />
+
+              <InfoBox
+                label="Scheduled Time"
+                value={formatScheduledTime(
+                  assignment,
+                )}
+                highlight
+                light
               />
             </div>
 
-            <p className="mt-2 text-right text-[10px] font-bold text-gray-500">
-              {completionPercentage}%
-              complete
-            </p>
+            <div className="mt-5">
+              <div className="flex items-center justify-between text-xs font-black">
+                <span className="text-black/50">
+                  Workout progress
+                </span>
+
+                <span>
+                  {completedSetCount} /{" "}
+                  {totalSets}
+                </span>
+              </div>
+
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/10">
+                <motion.div
+                  initial={{
+                    width: 0,
+                  }}
+                  animate={{
+                    width: `${completionPercentage}%`,
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    ease: "easeOut",
+                  }}
+                  className="h-full rounded-full bg-black"
+                />
+              </div>
+
+              <p className="mt-2 text-right text-[10px] font-black text-black/50">
+                {completionPercentage}%
+                complete
+              </p>
+            </div>
           </div>
-        </section>
+        </motion.section>
 
-        {/* ---------------------------------------------------------------- */}
+
         {/* Error */}
-        {/* ---------------------------------------------------------------- */}
 
-        {error && (
-          <section className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
-            <p className="text-xs font-bold leading-5 text-red-300">
-              {error}
-            </p>
-          </section>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.section
+              initial={{
+                opacity: 0,
+                height: 0,
+                y: -8,
+              }}
+              animate={{
+                opacity: 1,
+                height: "auto",
+                y: 0,
+              }}
+              exit={{
+                opacity: 0,
+                height: 0,
+              }}
+              className="mt-4 overflow-hidden rounded-2xl border border-red-400/20 bg-red-400/5 p-4"
+            >
+              <p className="text-xs font-bold leading-5 text-red-300">
+                {error}
+              </p>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Workout tracking */}
-        {/* ---------------------------------------------------------------- */}
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+        {/* Timer */}
+
+        <motion.section
+          variants={itemVariants}
+          className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-[#07111f] p-5"
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-gray-600">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">
                 Workout Timer
               </p>
 
               <p className="mt-1 text-xs text-gray-500">
                 {workoutCompleted
-                  ? "Completed"
+                  ? "Workout completed"
                   : workoutPausedAt
-                    ? "Paused"
+                    ? "Workout paused"
                     : workoutStartedAt
-                      ? "In progress"
+                      ? "Workout in progress"
                       : "Ready to start"}
               </p>
             </div>
 
             <div className="text-right">
-              <p className="font-mono text-3xl font-black tracking-tight">
-                {formattedWorkoutDuration}
-              </p>
+              <motion.p
+                key={
+                  formattedWorkoutDuration
+                }
+                initial={{
+                  opacity: 0.6,
+                }}
+                animate={{
+                  opacity: 1,
+                }}
+                className="font-mono text-3xl font-black tracking-tight"
+              >
+                {
+                  formattedWorkoutDuration
+                }
+              </motion.p>
 
-              {totalPausedSeconds > 0 && (
+              {totalPausedSeconds >
+                0 && (
                 <p className="mt-1 text-[10px] text-gray-600">
                   Paused:{" "}
                   {formatDuration(
@@ -1518,23 +1701,29 @@ function Workout() {
           </div>
 
           <p className="mt-3 text-center text-[9px] leading-4 text-gray-600">
-            Steps and calories are estimated from your active workout time.
+            Steps and calories are estimated from
+            active workout time.
           </p>
 
           {!workoutCompleted && (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4">
               {!workoutStartedAt ? (
-                <button
+                <motion.button
                   type="button"
                   disabled={
-                    Boolean(timerAction)
+                    Boolean(
+                      timerAction,
+                    )
                   }
                   onClick={() =>
                     handleTimerAction(
                       "start",
                     )
                   }
-                  className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-3 text-sm font-black text-black transition hover:bg-lime-300 disabled:opacity-50"
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-4 text-sm font-black text-black transition hover:bg-lime-300 disabled:opacity-50"
                 >
                   <Play
                     size={17}
@@ -1545,19 +1734,24 @@ function Workout() {
                   "start"
                     ? "STARTING..."
                     : "START WORKOUT"}
-                </button>
+                </motion.button>
               ) : workoutPausedAt ? (
-                <button
+                <motion.button
                   type="button"
                   disabled={
-                    Boolean(timerAction)
+                    Boolean(
+                      timerAction,
+                    )
                   }
                   onClick={() =>
                     handleTimerAction(
                       "resume",
                     )
                   }
-                  className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-3 text-sm font-black text-black transition hover:bg-lime-300 disabled:opacity-50"
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-4 text-sm font-black text-black transition hover:bg-lime-300 disabled:opacity-50"
                 >
                   <Play
                     size={17}
@@ -1568,19 +1762,24 @@ function Workout() {
                   "resume"
                     ? "RESUMING..."
                     : "RESUME WORKOUT"}
-                </button>
+                </motion.button>
               ) : (
-                <button
+                <motion.button
                   type="button"
                   disabled={
-                    Boolean(timerAction)
+                    Boolean(
+                      timerAction,
+                    )
                   }
                   onClick={() =>
                     handleTimerAction(
                       "pause",
                     )
                   }
-                  className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-gray-200 disabled:opacity-50"
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-4 text-sm font-black text-black transition hover:bg-gray-200 disabled:opacity-50"
                 >
                   <Pause
                     size={17}
@@ -1591,7 +1790,7 @@ function Workout() {
                   "pause"
                     ? "PAUSING..."
                     : "PAUSE WORKOUT"}
-                </button>
+                </motion.button>
               )}
             </div>
           )}
@@ -1601,7 +1800,9 @@ function Workout() {
               <button
                 type="button"
                 disabled={
-                  Boolean(timerAction) ||
+                  Boolean(
+                    timerAction,
+                  ) ||
                   resettingWorkout
                 }
                 onClick={() =>
@@ -1609,74 +1810,129 @@ function Workout() {
                     true,
                   )
                 }
-                className="mt-3 w-full rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-xs font-black text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-xs font-black text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
               >
+                <RotateCcw
+                  size={14}
+                />
+
                 {resettingWorkout
                   ? "RESETTING..."
                   : "RESET WORKOUT"}
               </button>
             )}
-        </section>
+        </motion.section>
 
-        {showResetConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5">
-            <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
-              <h3 className="text-lg font-black text-white">
-                Reset this workout?
-              </h3>
 
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                This will clear the current timer and completed sets. You can start the workout again from 00:00.
+        {/* Reset modal */}
+
+        <AnimatePresence>
+          {showResetConfirm && (
+            <motion.div
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 1,
+              }}
+              exit={{
+                opacity: 0,
+              }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  y: 20,
+                  scale: 0.95,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 20,
+                  scale: 0.95,
+                }}
+                className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#07111f] p-6 shadow-2xl"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-400/10 text-red-300">
+                  <RotateCcw
+                    size={21}
+                  />
+                </div>
+
+                <h3 className="mt-5 text-lg font-black">
+                  Reset this workout?
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  This will clear the current
+                  timer and completed sets.
+                  You can start the workout again
+                  from 00:00.
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowResetConfirm(
+                        false,
+                      )
+                    }
+                    className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/15"
+                  >
+                    CANCEL
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleResetWorkout
+                    }
+                    disabled={
+                      resettingWorkout
+                    }
+                    className="rounded-2xl bg-red-400 px-4 py-3 text-sm font-black text-black disabled:opacity-50"
+                  >
+                    {resettingWorkout
+                      ? "RESETTING..."
+                      : "YES, RESET"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+        {/* Exercises */}
+
+        <motion.section
+          variants={itemVariants}
+          className="mt-6"
+        >
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-600">
+                Today's Training
               </p>
 
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowResetConfirm(
-                      false,
-                    )
-                  }
-                  className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white"
-                >
-                  CANCEL
-                </button>
+              <h2 className="mt-1 text-xl font-black">
+                Complete Your Exercises
+              </h2>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={
-                    handleResetWorkout
-                  }
-                  disabled={
-                    resettingWorkout
-                  }
-                  className="rounded-2xl bg-red-400 px-4 py-3 text-sm font-black text-black disabled:opacity-50"
-                >
-                  {resettingWorkout
-                    ? "RESETTING..."
-                    : "YES, RESET"}
-                </button>
-              </div>
+            <div className="rounded-full bg-white/5 px-3 py-1.5 text-[10px] font-black text-gray-500">
+              {completedSetCount}/
+              {totalSets}
             </div>
           </div>
-        )}
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Exercises */}
-        {/* ---------------------------------------------------------------- */}
-
-        <section className="mt-6">
-          <div className="mb-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-600">
-              Today's Training
-            </p>
-
-            <h2 className="mt-1 text-lg font-black">
-              Complete Your Exercises
-            </h2>
-          </div>
-
-          <div className="space-y-4">
+          <div className="space-y-5">
             {exercises.map(
               (
                 programExercise,
@@ -1711,18 +1967,46 @@ function Workout() {
                     programExercise,
                   )
 
+                const exerciseSetCount =
+                  Array.from({
+                    length: sets,
+                  }).filter(
+                    (
+                      _,
+                      setIndex,
+                    ) =>
+                      Boolean(
+                        completedSets[
+                          `${exerciseId}-${setIndex + 1}`
+                        ],
+                      ),
+                  ).length
+
+                const exerciseCompleted =
+                  sets > 0 &&
+                  exerciseSetCount >=
+                    sets
+
                 return (
-                  <article
+                  <motion.article
                     key={
                       programExercise?._id ||
                       exerciseId ||
                       index
                     }
-                    className="overflow-hidden rounded-3xl border border-white/10 bg-white/5"
+                    variants={itemVariants}
+                    whileHover={{
+                      y: -2,
+                    }}
+                    className={`overflow-hidden rounded-3xl border bg-[#07111f] transition ${
+                      exerciseCompleted
+                        ? "border-lime-400/25"
+                        : "border-white/10"
+                    }`}
                   >
-                    {/* Exercise visual */}
+                    {/* Exercise image */}
 
-                    <div className="w-full overflow-hidden bg-black">
+                    <div className="relative w-full overflow-hidden bg-black">
                       {exercise?.image ||
                       exercise?.imageUrl ? (
                         <img
@@ -1741,30 +2025,39 @@ function Workout() {
                       ) : (
                         <div className="flex min-h-[220px] items-center justify-center">
                           <div className="text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-black">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-400 text-black">
                               <Play
-                                size={20}
+                                size={21}
                                 fill="currentColor"
                               />
                             </div>
 
-                            <p className="mt-2 text-xs font-semibold text-gray-500">
+                            <p className="mt-3 text-xs font-semibold text-gray-500">
                               Exercise demonstration
                             </p>
                           </div>
                         </div>
                       )}
+
+                      <div className="absolute left-4 top-4 rounded-full bg-black/80 px-3 py-1.5 text-[9px] font-black text-yellow-400 backdrop-blur-md">
+                        EXERCISE{" "}
+                        {index + 1}
+                      </div>
+
+                      {exerciseCompleted && (
+                        <div className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-black shadow-lg">
+                          <Check
+                            size={17}
+                          />
+                        </div>
+                      )}
                     </div>
+
 
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-yellow-400">
-                            EXERCISE{" "}
-                            {index + 1}
-                          </p>
-
-                          <h3 className="mt-1 text-lg font-black">
+                          <h3 className="text-xl font-black">
                             {exercise?.name ||
                               "Exercise"}
                           </h3>
@@ -1778,14 +2071,15 @@ function Workout() {
                           )}
                         </div>
 
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-gray-500">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-gray-500">
                           <Dumbbell
-                            size={19}
+                            size={18}
                           />
                         </div>
                       </div>
 
-                      {/* Target information */}
+
+                      {/* Target */}
 
                       <div className="mt-4 grid grid-cols-2 gap-2">
                         <InfoBox
@@ -1797,9 +2091,11 @@ function Workout() {
                           label="Reps"
                           value={
                             reps ||
-                            (duration
-                              ? `${duration} sec`
-                              : "As assigned")
+                            (
+                              duration
+                                ? `${duration} sec`
+                                : "As assigned"
+                            )
                           }
                         />
 
@@ -1822,73 +2118,89 @@ function Workout() {
                           }
                           icon={
                             <Clock3
-                              size={14}
+                              size={13}
                             />
                           }
                         />
                       </div>
 
+
                       {/* Exercise progress */}
 
-                      {(() => {
-                        const exerciseSetCount =
-                          Array.from({
-                            length: sets,
-                          }).filter(
-                            (_, setIndex) =>
-                              Boolean(
-                                completedSets[
-                                  `${exerciseId}-${setIndex + 1}`
-                                ],
-                              ),
-                          ).length
+                      <div
+                        className={`mt-4 rounded-2xl p-4 ${
+                          exerciseCompleted
+                            ? "bg-lime-400/10"
+                            : "bg-black"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-gray-600">
+                              Exercise Progress
+                            </p>
 
-                        const exerciseCompleted =
-                          sets > 0 &&
-                          exerciseSetCount >=
-                            sets
+                            <p className="mt-1 text-xs font-bold text-gray-400">
+                              {
+                                exerciseSetCount
+                              }{" "}
+                              / {sets} sets
+                              completed
+                            </p>
+                          </div>
 
-                        return (
-                          <div
-                            className={`mt-4 flex items-center justify-between rounded-2xl px-4 py-3 ${
+                          <span
+                            className={`rounded-full px-3 py-1 text-[9px] font-black ${
                               exerciseCompleted
-                                ? "bg-lime-400/10"
-                                : "bg-black"
+                                ? "bg-lime-400 text-black"
+                                : "bg-white/10 text-gray-500"
                             }`}
                           >
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-wider text-gray-600">
-                                Exercise Progress
-                              </p>
+                            {exerciseCompleted
+                              ? "COMPLETED"
+                              : "IN PROGRESS"}
+                          </span>
+                        </div>
 
-                              <p className="mt-1 text-xs font-bold text-gray-400">
-                                {exerciseSetCount}{" "}
-                                / {sets} sets completed
-                              </p>
-                            </div>
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
+                          <motion.div
+                            initial={{
+                              width: 0,
+                            }}
+                            animate={{
+                              width: `${
+                                sets > 0
+                                  ? Math.round(
+                                      (exerciseSetCount /
+                                        sets) *
+                                        100,
+                                    )
+                                  : 0
+                              }%`,
+                            }}
+                            transition={{
+                              duration: 0.5,
+                            }}
+                            className="h-full rounded-full bg-lime-400"
+                          />
+                        </div>
+                      </div>
 
-                            <span
-                              className={`rounded-full px-3 py-1 text-[9px] font-black ${
-                                exerciseCompleted
-                                  ? "bg-lime-400 text-black"
-                                  : "bg-white/10 text-gray-500"
-                              }`}
-                            >
-                              {exerciseCompleted
-                                ? "COMPLETED"
-                                : "IN PROGRESS"}
-                            </span>
-                          </div>
-                        )
-                      })()}
 
                       {/* Trainer notes */}
 
                       {programExercise?.notes && (
-                        <div className="mt-4 rounded-2xl bg-black p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                            Trainer Instructions
-                          </p>
+                        <div className="mt-4 rounded-2xl border border-white/5 bg-black p-4">
+                          <div className="flex items-center gap-2">
+                            <Target
+                              size={14}
+                              className="text-yellow-400"
+                            />
+
+                            <p className="text-[9px] font-black uppercase tracking-wider text-gray-600">
+                              Trainer Instructions
+                            </p>
+                          </div>
 
                           <p className="mt-2 text-xs leading-5 text-gray-400">
                             {
@@ -1898,9 +2210,10 @@ function Workout() {
                         </div>
                       )}
 
+
                       {/* Sets */}
 
-                      <div className="mt-5">
+                      <div className="mt-6">
                         <p className="mb-3 text-sm font-bold">
                           Complete your sets
                         </p>
@@ -1940,10 +2253,11 @@ function Workout() {
                                 key
 
                               return (
-                                <div
+                                <motion.div
                                   key={
                                     key
                                   }
+                                  layout
                                   className={`rounded-2xl border p-4 transition ${
                                     isCompleted
                                       ? "border-lime-400/30 bg-lime-400/10"
@@ -1973,7 +2287,17 @@ function Workout() {
                                       </p>
                                     </div>
 
-                                    <div
+                                    <motion.div
+                                      animate={{
+                                        scale:
+                                          isCompleted
+                                            ? [
+                                                0.8,
+                                                1.1,
+                                                1,
+                                              ]
+                                            : 1,
+                                      }}
                                       className={`flex h-9 w-9 items-center justify-center rounded-full ${
                                         isCompleted
                                           ? "bg-lime-400 text-black"
@@ -1987,8 +2311,9 @@ function Workout() {
                                           }
                                         />
                                       )}
-                                    </div>
+                                    </motion.div>
                                   </div>
+
 
                                   {/* Actual performance */}
 
@@ -2019,7 +2344,7 @@ function Workout() {
                                               .value,
                                           )
                                         }
-                                        className="w-full rounded-xl border border-white/10 bg-black px-3 py-3 text-sm font-bold text-white outline-none focus:border-lime-400"
+                                        className="w-full rounded-xl border border-white/10 bg-black px-3 py-3 text-sm font-bold text-white outline-none transition focus:border-lime-400"
                                         placeholder={
                                           reps ||
                                           "Reps"
@@ -2052,7 +2377,7 @@ function Workout() {
                                               .value,
                                           )
                                         }
-                                        className="w-full rounded-xl border border-white/10 bg-black px-3 py-3 text-sm font-bold text-white outline-none focus:border-lime-400"
+                                        className="w-full rounded-xl border border-white/10 bg-black px-3 py-3 text-sm font-bold text-white outline-none transition focus:border-lime-400"
                                         placeholder={
                                           targetWeight ||
                                           "e.g. 20 kg"
@@ -2061,9 +2386,10 @@ function Workout() {
                                     </label>
                                   </div>
 
+
                                   {/* Complete set */}
 
-                                  <button
+                                  <motion.button
                                     type="button"
                                     disabled={
                                       isSaving ||
@@ -2075,11 +2401,14 @@ function Workout() {
                                         setNumber,
                                       )
                                     }
+                                    whileTap={{
+                                      scale: 0.98,
+                                    }}
                                     className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition ${
                                       isCompleted
                                         ? "bg-white/10 text-white"
                                         : "bg-lime-400 text-black hover:bg-lime-300"
-                                    }`}
+                                    } disabled:cursor-not-allowed disabled:opacity-50`}
                                   >
                                     {isSaving ? (
                                       <>
@@ -2108,34 +2437,57 @@ function Workout() {
                                         COMPLETE SET
                                       </>
                                     )}
-                                  </button>
-                                </div>
+                                  </motion.button>
+                                </motion.div>
                               )
                             },
                           )}
                         </div>
                       </div>
                     </div>
-                  </article>
+                  </motion.article>
                 )
               },
             )}
           </div>
-        </section>
+        </motion.section>
 
-        {/* ---------------------------------------------------------------- */}
+
         {/* Calories */}
-        {/* ---------------------------------------------------------------- */}
 
         {workoutCompleted && (
-          <section className="mt-6 rounded-3xl bg-yellow-400 p-5 text-black">
+          <motion.section
+            variants={itemVariants}
+            initial={{
+              opacity: 0,
+              y: 15,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="mt-6 overflow-hidden rounded-3xl bg-yellow-400 p-5 text-black"
+          >
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-yellow-400">
+              <motion.div
+                animate={{
+                  scale: [
+                    1,
+                    1.08,
+                    1,
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                }}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-yellow-400"
+              >
                 <Flame
                   size={24}
                   fill="currentColor"
                 />
-              </div>
+              </motion.div>
 
               <div>
                 <p className="text-[10px] font-black uppercase tracking-wider text-black/50">
@@ -2156,16 +2508,18 @@ function Workout() {
               completed workout and available
               workout information.
             </p>
-          </section>
+          </motion.section>
         )}
 
-        {/* ---------------------------------------------------------------- */}
+
         {/* Complete workout */}
-        {/* ---------------------------------------------------------------- */}
 
         {!workoutCompleted && (
-          <section className="mt-6">
-            <button
+          <motion.section
+            variants={itemVariants}
+            className="mt-6"
+          >
+            <motion.button
               type="button"
               disabled={
                 completingWorkout ||
@@ -2176,12 +2530,15 @@ function Workout() {
               onClick={
                 handleCompleteWorkout
               }
+              whileTap={{
+                scale: 0.98,
+              }}
               className={`flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black transition ${
                 completedSetCount >=
                 totalSets
                   ? "bg-lime-400 text-black hover:bg-lime-300"
                   : "cursor-not-allowed bg-white/10 text-gray-600"
-              }`}
+              } disabled:opacity-60`}
             >
               {completingWorkout ? (
                 <>
@@ -2198,7 +2555,7 @@ function Workout() {
                   COMPLETE WORKOUT
                 </>
               )}
-            </button>
+            </motion.button>
 
             {completedSetCount <
               totalSets && (
@@ -2208,26 +2565,43 @@ function Workout() {
                 finish this workout.
               </p>
             )}
-          </section>
+          </motion.section>
         )}
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Completed message */}
-        {/* ---------------------------------------------------------------- */}
+
+        {/* Completed */}
 
         {workoutCompleted && (
-          <section className="mt-6 rounded-3xl border border-lime-400/20 bg-lime-400/5 p-5 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-lime-400 text-black">
-              <CheckCircle2
-                size={28}
+          <motion.section
+            variants={itemVariants}
+            className="mt-6 overflow-hidden rounded-3xl border border-lime-400/20 bg-lime-400/5 p-6 text-center"
+          >
+            <motion.div
+              initial={{
+                scale: 0.7,
+                opacity: 0,
+              }}
+              animate={{
+                scale: 1,
+                opacity: 1,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 220,
+                damping: 14,
+              }}
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lime-400 text-black"
+            >
+              <Trophy
+                size={29}
               />
-            </div>
+            </motion.div>
 
             <p className="mt-4 text-xs font-black uppercase tracking-wider text-lime-400">
               Workout Completed
             </p>
 
-            <h2 className="mt-1 text-xl font-black">
+            <h2 className="mt-1 text-2xl font-black">
               Excellent Work!
             </h2>
 
@@ -2244,16 +2618,17 @@ function Workout() {
                   "/dashboard",
                 )
               }
-              className="mt-5 w-full rounded-2xl bg-white px-5 py-4 text-sm font-black text-black"
+              className="mt-5 w-full rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-gray-200"
             >
               BACK TO DASHBOARD
             </button>
-          </section>
+          </motion.section>
         )}
       </main>
-    </div>
+    </motion.div>
   )
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2272,21 +2647,24 @@ function WorkoutHeader({
       : "Training"
 
   return (
-    <header className="border-b border-white/10">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#020617]/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
-        <button
+        <motion.button
           type="button"
           onClick={onBack}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10"
+          whileTap={{
+            scale: 0.9,
+          }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/15"
           aria-label="Go back"
         >
           <ArrowLeft
             size={20}
           />
-        </button>
+        </motion.button>
 
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+          <p className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-lime-400">
             {displayGymName}
           </p>
 
@@ -2299,9 +2677,10 @@ function WorkoutHeader({
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Tracking Box
+| Tracking box
 |--------------------------------------------------------------------------
 */
 
@@ -2315,7 +2694,7 @@ function TrackingBox({
       <div className="flex items-center gap-1 text-yellow-400">
         {icon}
 
-        <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600">
+        <p className="truncate text-[8px] font-bold uppercase tracking-wider text-gray-600">
           {label}
         </p>
       </div>
@@ -2327,9 +2706,10 @@ function TrackingBox({
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Info Box
+| Info box
 |--------------------------------------------------------------------------
 */
 
@@ -2338,18 +2718,35 @@ function InfoBox({
   value,
   highlight = false,
   icon,
+  light = false,
 }) {
   return (
-    <div className="rounded-2xl bg-black p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
+    <div
+      className={
+        light
+          ? "rounded-2xl bg-black/10 p-3"
+          : "rounded-2xl bg-black p-3"
+      }
+    >
+      <p
+        className={
+          light
+            ? "text-[9px] font-bold uppercase tracking-wider text-black/45"
+            : "text-[10px] font-bold uppercase tracking-wider text-gray-600"
+        }
+      >
         {label}
       </p>
 
       <p
         className={`mt-1 flex items-center gap-1 text-sm font-black ${
           highlight
-            ? "text-yellow-400"
-            : "text-white"
+            ? light
+              ? "text-black"
+              : "text-yellow-400"
+            : light
+              ? "text-black"
+              : "text-white"
         }`}
       >
         {icon}
@@ -2359,6 +2756,7 @@ function InfoBox({
     </div>
   )
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2373,13 +2771,9 @@ function extractAssignment(
     return null
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Standard assignment response
-  |--------------------------------------------------------------------------
-  */
-
-  if (response.assignment) {
+  if (
+    response.assignment
+  ) {
     return response.assignment
   }
 
@@ -2389,16 +2783,9 @@ function extractAssignment(
     return response.programAssignment
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | IMPORTANT:
-  |
-  | Your backend's /my-today response puts the assignment
-  | information inside response.workout.
-  |--------------------------------------------------------------------------
-  */
-
-  if (response.workout) {
+  if (
+    response.workout
+  ) {
     if (
       response.workout.assignment
     ) {
@@ -2435,11 +2822,13 @@ function extractAssignment(
           "",
 
         reminderEnabled:
-          response.workout.reminderEnabled ??
+          response.workout
+            .reminderEnabled ??
           true,
 
         reminderMinutesBefore:
-          response.workout.reminderMinutesBefore ??
+          response.workout
+            .reminderMinutesBefore ??
           5,
 
         notes:
@@ -2522,6 +2911,7 @@ function extractAssignment(
   return null
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Extract assignments
@@ -2574,6 +2964,7 @@ function extractAssignments(
   return []
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Normalize assignment
@@ -2623,16 +3014,19 @@ function normalizeWorkoutAssignment(
         "",
 
       reminderEnabled:
-        value.workout.reminderEnabled ??
+        value.workout
+          .reminderEnabled ??
         true,
 
       reminderMinutesBefore:
-        value.workout.reminderMinutesBefore ??
+        value.workout
+          .reminderMinutesBefore ??
         5,
 
       durationSeconds:
         value.durationSeconds ??
-        value.workout.durationSeconds ??
+        value.workout
+          .durationSeconds ??
         null,
 
       notes:
@@ -2647,9 +3041,10 @@ function normalizeWorkoutAssignment(
   return value
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Restore existing workout log
+| Restore existing log
 |--------------------------------------------------------------------------
 */
 
@@ -2720,24 +3115,30 @@ async function restoreExistingLog(
     )
 
     const persistedDuration =
-      log?.durationSeconds !== null &&
-      log?.durationSeconds !== undefined
+      log?.durationSeconds !==
+        null &&
+      log?.durationSeconds !==
+        undefined
         ? Number(
             log.durationSeconds,
           )
         : null
 
     const assignmentDuration =
-      assignment?.durationSeconds !== null &&
-      assignment?.durationSeconds !== undefined
+      assignment?.durationSeconds !==
+        null &&
+      assignment?.durationSeconds !==
+        undefined
         ? Number(
             assignment.durationSeconds,
           )
         : null
 
     const fallbackDuration =
-      fallbackDurationSeconds !== null &&
-      fallbackDurationSeconds !== undefined &&
+      fallbackDurationSeconds !==
+        null &&
+      fallbackDurationSeconds !==
+        undefined &&
       Number.isFinite(
         Number(
           fallbackDurationSeconds,
@@ -2750,9 +3151,14 @@ async function restoreExistingLog(
 
     const timerLog =
       log?.completed &&
-      persistedDuration === null &&
-      (assignmentDuration !== null ||
-        fallbackDuration !== null)
+      persistedDuration ===
+        null &&
+      (
+        assignmentDuration !==
+          null ||
+        fallbackDuration !==
+          null
+      )
         ? {
             ...log,
 
@@ -2772,24 +3178,21 @@ async function restoreExistingLog(
       setWorkoutDurationSeconds,
       setWorkoutTimerSeconds,
     )
-  } catch (error) {
-    /*
-    |--------------------------------------------------------------------------
-    | A missing log is normal before the member starts the workout.
-    |--------------------------------------------------------------------------
-    */
-
+  } catch (
+    restoreError
+  ) {
     if (
-      error?.response?.status !==
-      404
+      restoreError?.response
+        ?.status !== 404
     ) {
       console.warn(
         "Unable to restore workout log:",
-        error,
+        restoreError,
       )
     }
   }
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2811,6 +3214,7 @@ function getExerciseId(
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Target weight
@@ -2828,6 +3232,7 @@ function getTargetWeight(
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Workout date
@@ -2842,10 +3247,15 @@ function getWorkoutDate(
     assignment?.date
 
   return (
-    normalizeDateKey(rawDate) ||
-    normalizeDateKey(new Date())
+    normalizeDateKey(
+      rawDate,
+    ) ||
+    normalizeDateKey(
+      new Date(),
+    )
   )
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2868,7 +3278,9 @@ function findAssignmentForDate(
 
   const matching =
     assignments.filter(
-      (assignment) => {
+      (
+        assignment,
+      ) => {
         if (!assignment) {
           return false
         }
@@ -2896,10 +3308,12 @@ function findAssignmentForDate(
       second,
     ) =>
       new Date(
-        second.createdAt || 0,
+        second.createdAt ||
+          0,
       ).getTime() -
       new Date(
-        first.createdAt || 0,
+        first.createdAt ||
+          0,
       ).getTime(),
   )
 
@@ -2907,6 +3321,7 @@ function findAssignmentForDate(
     matching[0] || null
   )
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2924,6 +3339,7 @@ function findCurrentAssignment(
     ),
   )
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -2947,7 +3363,9 @@ function restoreWorkoutLog(
       : []
 
   exercises.forEach(
-    (exerciseLog) => {
+    (
+      exerciseLog,
+    ) => {
       const exerciseId =
         exerciseLog?.exercise?._id ||
         exerciseLog?.exercise ||
@@ -3008,9 +3426,10 @@ function restoreWorkoutLog(
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
-| Workout timer helpers
+| Workout timer state
 |--------------------------------------------------------------------------
 */
 
@@ -3023,10 +3442,12 @@ function applyWorkoutTimerState(
   setTimerSeconds,
 ) {
   const startedAt =
-    log?.startedAt || null
+    log?.startedAt ||
+    null
 
   const pausedAt =
-    log?.pausedAt || null
+    log?.pausedAt ||
+    null
 
   const pausedSeconds =
     Number(
@@ -3034,10 +3455,6 @@ function applyWorkoutTimerState(
         0,
     )
 
-  // A duration is final only after the workout has been completed.
-  // Some existing WorkoutLog documents may contain durationSeconds: 0
-  // as a schema/default value while the workout is still in progress.
-  // That must NOT stop the live timer.
   const duration =
     log?.completed &&
     log?.durationSeconds !==
@@ -3117,6 +3534,13 @@ function applyWorkoutTimerState(
   )
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Duration
+|--------------------------------------------------------------------------
+*/
+
 function formatDuration(
   totalSeconds,
 ) {
@@ -3143,11 +3567,37 @@ function formatDuration(
     seconds % 60
 
   if (hours > 0) {
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+    return `${String(
+      hours,
+    ).padStart(
+      2,
+      "0",
+    )}:${String(
+      minutes,
+    ).padStart(
+      2,
+      "0",
+    )}:${String(
+      remainingSeconds,
+    ).padStart(
+      2,
+      "0",
+    )}`
   }
 
-  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+  return `${String(
+    minutes,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    remainingSeconds,
+  ).padStart(
+    2,
+    "0",
+  )}`
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -3189,6 +3639,7 @@ function calculateCalories(
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Scheduled time
@@ -3227,7 +3678,9 @@ function formatScheduledTime(
     }
 
     let hour =
-      Number(match[1])
+      Number(
+        match[1],
+      )
 
     const minute =
       match[2]
@@ -3262,6 +3715,7 @@ function formatScheduledTime(
   )
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | Date helper
@@ -3274,18 +3728,6 @@ function normalizeDateKey(
   if (!value) {
     return ""
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Preserve exact calendar dates.
-  |
-  | MongoDB Date values are commonly serialized as:
-  | "YYYY-MM-DDT00:00:00.000Z".
-  |
-  | For workout assignments we need the calendar date itself, not an
-  | ISO timestamp, so extract the date portion when possible.
-  |--------------------------------------------------------------------------
-  */
 
   if (
     typeof value ===
@@ -3327,27 +3769,18 @@ function normalizeDateKey(
     date.getFullYear(),
     String(
       date.getMonth() + 1,
-    ).padStart(2, "0"),
+    ).padStart(
+      2,
+      "0",
+    ),
     String(
       date.getDate(),
-    ).padStart(2, "0"),
+    ).padStart(
+      2,
+      "0",
+    ),
   ].join("-")
 }
 
-function startOfDay(
-  date,
-) {
-  const result =
-    new Date(date)
-
-  result.setHours(
-    0,
-    0,
-    0,
-    0,
-  )
-
-  return result
-}
 
 export default Workout

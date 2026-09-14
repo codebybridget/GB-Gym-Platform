@@ -3,9 +3,10 @@ import dotenv from "dotenv"
 dotenv.config()
 
 /*
- * Load environment variables before importing any application module
- * that reads process.env at module initialization.
- */
+|--------------------------------------------------------------------------
+| Load environment variables before importing application modules
+|--------------------------------------------------------------------------
+*/
 
 const { default: express } = await import("express")
 const { default: cors } = await import("cors")
@@ -14,49 +15,117 @@ const { default: rateLimit } = await import("express-rate-limit")
 const { default: path } = await import("path")
 const { fileURLToPath } = await import("url")
 
-const { default: connectDB } = await import("./config/db.js")
+const { default: connectDB } =
+  await import("./config/db.js")
 
-const { default: authRoutes } = await import("./routes/authRoutes.js")
-const { default: passwordResetRoutes } = await import("./routes/passwordResetRoutes.js")
-const { default: paymentRoutes } = await import("./routes/paymentRoutes.js")
-const { default: adminAuthRoutes } = await import("./routes/adminAuthRoutes.js")
-const { default: adminRoutes } = await import("./routes/adminRoutes.js")
-const { default: dashboardRoutes } = await import("./routes/dashboardRoutes.js")
-const { default: trainerRoutes } = await import("./routes/trainerRoutes.js")
-const { default: trainerAssignmentRoutes } = await import("./routes/trainerAssignmentRoutes.js")
-const { default: exerciseRoutes } = await import("./routes/exerciseRoutes.js")
-const { default: programRoutes } = await import("./routes/programRoutes.js")
-const { default: profileRoutes } = await import("./routes/profileRoutes.js")
-const { default: paymentVerificationRoutes } = await import("./routes/paymentVerificationRoutes.js")
-const { default: emergencyContactRoutes } = await import("./routes/emergencyContactRoutes.js")
-const { default: programAssignmentRoutes } = await import("./routes/programAssignmentRoutes.js")
-const { default: workoutRoutes } = await import("./routes/workoutRoutes.js")
-const { default: workoutLogRoutes } = await import("./routes/workoutLogRoutes.js")
-const { default: classScheduleRoutes } = await import("./routes/classScheduleRoutes.js")
-const { default: membershipRoutes } = await import("./routes/membershipRoutes.js")
-const { default: subscriptionRoutes } = await import("./routes/subscriptionRoutes.js")
-const { default: notificationRoutes } = await import("./routes/notificationRoutes.js")
-const { default: revenueRoutes } = await import("./routes/revenueRoutes.js")
-const { default: gymRoutes } = await import("./routes/gymRoutes.js")
-const { default: platformRoutes } = await import("./routes/platformRoutes.js")
-const { default: platformPaymentRoutes } = await import("./routes/platformPaymentRoutes.js")
-const { default: gymSubscriptionRoutes } = await import("./routes/gymSubscriptionRoutes.js")
-const { default: workoutTemplateRoutes } = await import("./routes/workoutTemplateRoutes.js")
-const { default: attendanceRoutes } = await import("./routes/attendanceRoutes.js")
+const { default: authRoutes } =
+  await import("./routes/authRoutes.js")
 
-const { startWorkoutNotificationJobs } = await import(
+const { default: passwordResetRoutes } =
+  await import("./routes/passwordResetRoutes.js")
+
+const { default: paymentRoutes } =
+  await import("./routes/paymentRoutes.js")
+
+const { default: adminAuthRoutes } =
+  await import("./routes/adminAuthRoutes.js")
+
+const { default: adminRoutes } =
+  await import("./routes/adminRoutes.js")
+
+const { default: dashboardRoutes } =
+  await import("./routes/dashboardRoutes.js")
+
+const { default: trainerRoutes } =
+  await import("./routes/trainerRoutes.js")
+
+const { default: trainerAssignmentRoutes } =
+  await import("./routes/trainerAssignmentRoutes.js")
+
+const { default: exerciseRoutes } =
+  await import("./routes/exerciseRoutes.js")
+
+const { default: programRoutes } =
+  await import("./routes/programRoutes.js")
+
+const { default: profileRoutes } =
+  await import("./routes/profileRoutes.js")
+
+const { default: paymentVerificationRoutes } =
+  await import("./routes/paymentVerificationRoutes.js")
+
+const { default: emergencyContactRoutes } =
+  await import("./routes/emergencyContactRoutes.js")
+
+const { default: programAssignmentRoutes } =
+  await import("./routes/programAssignmentRoutes.js")
+
+const { default: workoutRoutes } =
+  await import("./routes/workoutRoutes.js")
+
+const { default: workoutLogRoutes } =
+  await import("./routes/workoutLogRoutes.js")
+
+const { default: classScheduleRoutes } =
+  await import("./routes/classScheduleRoutes.js")
+
+const { default: membershipRoutes } =
+  await import("./routes/membershipRoutes.js")
+
+const { default: subscriptionRoutes } =
+  await import("./routes/subscriptionRoutes.js")
+
+const { default: notificationRoutes } =
+  await import("./routes/notificationRoutes.js")
+
+const { default: revenueRoutes } =
+  await import("./routes/revenueRoutes.js")
+
+const { default: gymRoutes } =
+  await import("./routes/gymRoutes.js")
+
+const { default: platformRoutes } =
+  await import("./routes/platformRoutes.js")
+
+const { default: platformPaymentRoutes } =
+  await import("./routes/platformPaymentRoutes.js")
+
+const { default: gymSubscriptionRoutes } =
+  await import("./routes/gymSubscriptionRoutes.js")
+
+const { default: workoutTemplateRoutes } =
+  await import("./routes/workoutTemplateRoutes.js")
+
+const { default: attendanceRoutes } =
+  await import("./routes/attendanceRoutes.js")
+
+const {
+  startWorkoutNotificationJobs,
+} = await import(
   "./services/workoutNotificationService.js"
 )
 
-const { protect } = await import("./middleware/authMiddleware.js")
-const { default: requireActiveSubscription } = await import(
+const { protect } =
+  await import("./middleware/authMiddleware.js")
+
+const {
+  default: requireActiveSubscription,
+} = await import(
   "./middleware/requireActiveSubscription.js"
 )
+
 
 const app = express()
 
 const PORT =
   process.env.PORT || 5000
+
+
+/*
+|--------------------------------------------------------------------------
+| Allowed CORS origins
+|--------------------------------------------------------------------------
+*/
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -64,10 +133,13 @@ const allowedOrigins = [
   "https://gb-gym-frontend.onrender.com",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
-].filter(Boolean).filter(
-  (value, index, values) =>
-    values.indexOf(value) === index,
-)
+]
+  .filter(Boolean)
+  .filter(
+    (value, index, values) =>
+      values.indexOf(value) === index,
+  )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -85,6 +157,7 @@ const __dirname =
     __filename,
   )
 
+
 /*
 |--------------------------------------------------------------------------
 | Security
@@ -99,36 +172,43 @@ app.use(
   }),
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | CORS
 |--------------------------------------------------------------------------
-|
-| Production frontend:
-| https://localhost:5173
-|
-| Local development:
-| http://localhost:5173
-|
 */
 
 app.use(
   cors({
     credentials: true,
-    origin: (origin, callback) => {
+
+    origin: (
+      origin,
+      callback,
+    ) => {
       /*
-       * Allow requests that do not have an Origin header.
-       * This includes some server-to-server requests,
-       * health checks and direct API requests.
-       */
+      |--------------------------------------------------------------------------
+      | Allow requests without Origin
+      |--------------------------------------------------------------------------
+      */
+
       if (!origin) {
-        return callback(null, true)
+        return callback(
+          null,
+          true,
+        )
       }
 
       if (
-        allowedOrigins.includes(origin)
+        allowedOrigins.includes(
+          origin,
+        )
       ) {
-        return callback(null, true)
+        return callback(
+          null,
+          true,
+        )
       }
 
       return callback(
@@ -154,6 +234,7 @@ app.use(
   }),
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Body Parsing
@@ -178,6 +259,10 @@ app.use(
 |--------------------------------------------------------------------------
 | Uploaded Media
 |--------------------------------------------------------------------------
+|
+| Legacy/local uploads remain available here.
+| New media should use Cloudinary.
+|--------------------------------------------------------------------------
 */
 
 app.use(
@@ -191,11 +276,27 @@ app.use(
         response,
         filePath,
       ) => {
-        const requestOrigin = response.req?.headers?.origin
-        if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
-          response.setHeader("Access-Control-Allow-Origin", requestOrigin)
+        const requestOrigin =
+          response.req
+            ?.headers
+            ?.origin
+
+        if (
+          requestOrigin &&
+          allowedOrigins.includes(
+            requestOrigin,
+          )
+        ) {
+          response.setHeader(
+            "Access-Control-Allow-Origin",
+            requestOrigin,
+          )
         } else {
-          response.setHeader("Access-Control-Allow-Origin", allowedOrigins[0] || "http://localhost:5173")
+          response.setHeader(
+            "Access-Control-Allow-Origin",
+            allowedOrigins[0] ||
+              "http://localhost:5173",
+          )
         }
 
         response.setHeader(
@@ -217,6 +318,7 @@ app.use(
     },
   ),
 )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -241,15 +343,19 @@ app.use(
   apiLimiter,
 )
 
+
 /*
 |--------------------------------------------------------------------------
-| Health
+| Health / Root
 |--------------------------------------------------------------------------
 */
 
 app.get(
   "/",
-  (req, res) => {
+  (
+    req,
+    res,
+  ) => {
     return res.status(200).json({
       success: true,
 
@@ -261,7 +367,10 @@ app.get(
 
 app.get(
   "/api/health",
-  (req, res) => {
+  (
+    req,
+    res,
+  ) => {
     return res.status(200).json({
       success: true,
 
@@ -271,29 +380,91 @@ app.get(
   },
 )
 
+
+/*
+|--------------------------------------------------------------------------
+| Authentication / Core Routes
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  "/api/gyms",
+  gymRoutes,
+)
+
+app.use(
+  "/api/attendance",
+  attendanceRoutes,
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| PLATFORM OWNER ROUTES
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+|
+| This mounts:
+|
+| GET    /api/platform/subscriptions
+| PUT    /api/platform/subscriptions/:id
+| POST   /api/platform/subscriptions/:id/cancel
+| POST   /api/platform/subscriptions/:id/reactivate
+| DELETE /api/platform/subscriptions/:id
+|
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  "/api/platform",
+  platformRoutes,
+)
+
+
+/*
+|--------------------------------------------------------------------------
+| Platform payment routes
+|--------------------------------------------------------------------------
+*/
+
+app.use(
+  "/api/platform-payment",
+  platformPaymentRoutes,
+)
+
+
 /*
 |--------------------------------------------------------------------------
 | Authentication
 |--------------------------------------------------------------------------
 */
 
-app.use("/api/gyms", gymRoutes)
-app.use("/api/attendance", attendanceRoutes)
-app.use("/api/platform", platformRoutes)
-app.use("/api/platform-payment", platformPaymentRoutes)
-
 app.use(
   "/api/auth",
   authRoutes,
 )
-app.use("/api/password-reset", passwordResetRoutes)
+
+app.use(
+  "/api/password-reset",
+  passwordResetRoutes,
+)
 
 app.use(
   "/api/payments",
   paymentRoutes,
 )
-app.use("/api/subscriptions", gymSubscriptionRoutes)
-app.use("/api/subscriptions", subscriptionRoutes)
+
+app.use(
+  "/api/subscriptions",
+  gymSubscriptionRoutes,
+)
+
+app.use(
+  "/api/subscriptions",
+  subscriptionRoutes,
+)
+
 app.use(
   "/api/payment-verification",
   paymentVerificationRoutes,
@@ -303,6 +474,7 @@ app.use(
   "/api/admin-auth",
   adminAuthRoutes,
 )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -327,6 +499,7 @@ app.use(
   dashboardRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Trainer
@@ -343,6 +516,7 @@ app.use(
   trainerAssignmentRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Exercises
@@ -356,6 +530,7 @@ app.use(
   exerciseRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Programs
@@ -368,6 +543,7 @@ app.use(
   requireActiveSubscription,
   programRoutes,
 )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -387,6 +563,7 @@ app.use(
   membershipRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Emergency Contacts
@@ -399,6 +576,7 @@ app.use(
   requireActiveSubscription,
   emergencyContactRoutes,
 )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -413,14 +591,25 @@ app.use(
   programAssignmentRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Workouts
 |--------------------------------------------------------------------------
 */
 
-app.use("/api/workouts", workoutTemplateRoutes)
-app.use("/api/member-workouts", protect, requireActiveSubscription, workoutRoutes)
+app.use(
+  "/api/workouts",
+  workoutTemplateRoutes,
+)
+
+app.use(
+  "/api/member-workouts",
+  protect,
+  requireActiveSubscription,
+  workoutRoutes,
+)
+
 
 /*
 |--------------------------------------------------------------------------
@@ -435,14 +624,27 @@ app.use(
   workoutLogRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Weekly Class Schedule
 |--------------------------------------------------------------------------
 */
 
-app.use("/api/class-schedule", protect, requireActiveSubscription, classScheduleRoutes)
-app.use("/api/class-schedules", protect, requireActiveSubscription, classScheduleRoutes)
+app.use(
+  "/api/class-schedule",
+  protect,
+  requireActiveSubscription,
+  classScheduleRoutes,
+)
+
+app.use(
+  "/api/class-schedules",
+  protect,
+  requireActiveSubscription,
+  classScheduleRoutes,
+)
+
 
 /*
 |--------------------------------------------------------------------------
@@ -457,14 +659,21 @@ app.use(
   notificationRoutes,
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | 404
 |--------------------------------------------------------------------------
+|
+| This MUST remain after all API routes.
+|--------------------------------------------------------------------------
 */
 
 app.use(
-  (req, res) => {
+  (
+    req,
+    res,
+  ) => {
     return res.status(404).json({
       success: false,
 
@@ -473,6 +682,7 @@ app.use(
     })
   },
 )
+
 
 /*
 |--------------------------------------------------------------------------
@@ -491,6 +701,7 @@ app.use(
       "Server error:",
       error,
     )
+
 
     /*
     |--------------------------------------------------------------------------
@@ -511,6 +722,7 @@ app.use(
       })
     }
 
+
     /*
     |--------------------------------------------------------------------------
     | Multer Errors
@@ -527,6 +739,7 @@ app.use(
       ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Uploaded file is too large. Images must be 5 MB or less and videos must be 50 MB or less.",
         })
@@ -538,6 +751,7 @@ app.use(
       ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Too many files were uploaded.",
         })
@@ -549,6 +763,7 @@ app.use(
       ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Unexpected upload field. Please use the exercise image and video upload controls.",
         })
@@ -556,11 +771,13 @@ app.use(
 
       return res.status(400).json({
         success: false,
+
         message:
           error.message ||
           "Unable to process uploaded file.",
       })
     }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -577,6 +794,7 @@ app.use(
     ) {
       return res.status(400).json({
         success: false,
+
         message:
           error.message,
       })
@@ -591,10 +809,18 @@ app.use(
     ) {
       return res.status(400).json({
         success: false,
+
         message:
           error.message,
       })
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | General error
+    |--------------------------------------------------------------------------
+    */
 
     return res.status(
       error.status || 500,
@@ -608,6 +834,7 @@ app.use(
   },
 )
 
+
 /*
 |--------------------------------------------------------------------------
 | Start Server
@@ -619,13 +846,21 @@ const startServer =
     try {
       await connectDB()
 
+
       /*
       |--------------------------------------------------------------------------
-      | Workout Notification Jobs
+      | Start workout notification jobs
       |--------------------------------------------------------------------------
       */
 
       startWorkoutNotificationJobs()
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | Start Express
+      |--------------------------------------------------------------------------
+      */
 
       app.listen(
         PORT,
@@ -636,6 +871,11 @@ const startServer =
 
           console.log(
             `GB uploads available at /uploads`,
+          )
+
+          console.log(
+            "Platform subscriptions DELETE route:",
+            `/api/platform/subscriptions/:id`,
           )
 
           console.log(
@@ -653,5 +893,6 @@ const startServer =
       process.exit(1)
     }
   }
+
 
 startServer()

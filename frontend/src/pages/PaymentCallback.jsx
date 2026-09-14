@@ -1,132 +1,206 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
-import { payments, verifyPaystackPayment } from "../api/api.js"
+import { payments } from "../api/api.js"
 
 export default function PaymentCallback() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
   const [status, setStatus] = useState("verifying")
-  const [message, setMessage] = useState("Verifying your payment. Please wait...")
+  const [message, setMessage] = useState(
+    "Verifying your payment. Please wait...",
+  )
 
   useEffect(() => {
     let cancelled = false
+    let redirectTimer = null
 
-    const verify = async () => {
-      const reference = searchParams.get("reference") || searchParams.get("trxref")
+    const verifyPayment = async () => {
+      const reference =
+        searchParams.get("reference") ||
+        searchParams.get("trxref")
 
       if (!reference) {
         if (!cancelled) {
           setStatus("error")
-          setMessage("Payment reference was not found.")
+          setMessage(
+            "Payment reference was not found.",
+          )
         }
+
         return
       }
 
-      // GB gym SaaS payments are stored as PlatformTransaction records.
-      // Verify those first so a successful Paystack payment changes the
-      // GymSubscription paymentStatus from pending -> paid.
       try {
-        const platformResult = await payments.verifyPublicPlatform(reference)
-
-        if (!cancelled && platformResult?.success) {
-          setStatus("success")
-          setMessage("Payment successful. Your GB gym subscription has been activated.")
-
-          setTimeout(() => {
-            navigate("/login", {
-              replace: true,
-              state: {
-                message: "Your gym subscription is active. Sign in to open your gym dashboard.",
-              },
-            })
-          }, 1800)
-          return
-        }
-      } catch (platformError) {
-        // A normal gym-member payment is not a PlatformTransaction.
-        // In that case continue with the existing member-payment verifier.
-        if (platformError?.response?.status !== 404) {
-          console.warn("Platform payment verification did not complete:", platformError)
-        }
-      }
-
-      // Existing CGF/member membership payment flow.
-      try {
-        const result = await verifyPaystackPayment(reference)
-
-        if (cancelled) return
-
-        if (result?.success) {
-          setStatus("success")
-          setMessage("Payment successful. Your membership has been activated.")
-
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true })
-          }, 1800)
-          return
-        }
-
-        setStatus("error")
-        setMessage(result?.message || "Payment verification failed.")
-      } catch (error) {
-        if (cancelled) return
-
-        console.error("Payment verification error:", error)
-        setStatus("error")
+        setStatus("verifying")
         setMessage(
-          error.response?.data?.message ||
-            "We could not verify your payment. Please contact the gym if money was deducted.",
+          "Verifying your payment. Please wait...",
+        )
+
+        /*
+         * The backend identifies whether this reference
+         * belongs to a GB Gym SaaS subscription or another
+         * supported payment.
+         *
+         * This endpoint is intentionally used instead of
+         * sending a gym SaaS payment through the member
+         * payment verifier.
+         */
+        const result =
+          await payments.verifyPublicPlatform(
+            reference,
+          )
+
+        if (cancelled) {
+          return
+        }
+
+        if (!result?.success) {
+          setStatus("error")
+          setMessage(
+            result?.message ||
+              "Payment verification failed.",
+          )
+
+          return
+        }
+
+        setStatus("success")
+        setMessage(
+          "Payment successful. Your GB gym subscription has been activated.",
+        )
+
+        /*
+         * Give the backend a moment to finish the
+         * subscription activation before returning
+         * the owner to login.
+         */
+        redirectTimer = setTimeout(() => {
+          if (cancelled) {
+            return
+          }
+
+          navigate("/login", {
+            replace: true,
+            state: {
+              message:
+                "Your gym subscription is active. Sign in to open your gym dashboard.",
+            },
+          })
+        }, 1800)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        console.error(
+          "Gym SaaS payment verification error:",
+          error,
+        )
+
+        setStatus("error")
+
+        setMessage(
+          error?.response?.data?.message ||
+            error?.message ||
+            "We could not verify your payment. If money was deducted, please contact GB support.",
         )
       }
     }
 
-    verify()
+    verifyPayment()
 
     return () => {
       cancelled = true
+
+      if (redirectTimer) {
+        clearTimeout(redirectTimer)
+      }
     }
   }, [searchParams, navigate])
 
+  const handleReturnToLogin = () => {
+    navigate("/login", {
+      replace: true,
+    })
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 text-center shadow-xl">
+    <main className="flex min-h-screen items-center justify-center bg-[#020617] px-4 py-8 text-white">
+      <section className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#111322] p-7 text-center shadow-2xl sm:p-9">
         {status === "verifying" && (
           <>
-            <div className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white" />
-            <h1 className="text-xl font-semibold">Verifying Payment</h1>
-            <p className="mt-3 text-sm text-white/70">{message}</p>
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-lime-400/10">
+              <div className="h-9 w-9 animate-spin rounded-full border-4 border-white/10 border-t-lime-400" />
+            </div>
+
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-lime-400">
+              GB Gym Platform
+            </p>
+
+            <h1 className="mt-3 text-2xl font-black">
+              Verifying Payment
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              {message}
+            </p>
           </>
         )}
 
         {status === "success" && (
           <>
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/20 text-2xl text-green-400">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-lime-400/15 text-3xl font-black text-lime-400">
               ✓
             </div>
-            <h1 className="text-xl font-semibold">Payment Successful</h1>
-            <p className="mt-3 text-sm text-white/70">{message}</p>
-            <p className="mt-4 text-xs text-white/50">Redirecting you to your dashboard...</p>
+
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-lime-400">
+              GB Gym Platform
+            </p>
+
+            <h1 className="mt-3 text-2xl font-black">
+              Payment Successful
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              {message}
+            </p>
+
+            <p className="mt-5 text-xs text-slate-500">
+              Redirecting you to login...
+            </p>
           </>
         )}
 
         {status === "error" && (
           <>
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20 text-2xl text-red-400">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-3xl font-black text-red-400">
               !
             </div>
-            <h1 className="text-xl font-semibold">Payment Verification Failed</h1>
-            <p className="mt-3 text-sm text-white/70">{message}</p>
+
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-lime-400">
+              GB Gym Platform
+            </p>
+
+            <h1 className="mt-3 text-2xl font-black">
+              Payment Verification Failed
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              {message}
+            </p>
+
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
-              className="mt-6 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
+              onClick={handleReturnToLogin}
+              className="mt-7 w-full rounded-xl bg-lime-400 px-5 py-4 text-sm font-black text-black transition hover:bg-lime-300"
             >
-              Return to Dashboard
+              RETURN TO LOGIN
             </button>
           </>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }

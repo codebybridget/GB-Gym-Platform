@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { motion } from "framer-motion"
 import {
   Users,
   Dumbbell,
@@ -20,6 +21,34 @@ import PageHeader from "../../components/PageHeader"
 import StatCard from "../../components/StatCard"
 import api, { subscriptions } from "../../api/api"
 import { money, date } from "../../utils/helpers"
+
+const pageVariants = {
+  hidden: {
+    opacity: 0,
+  },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.45,
+      staggerChildren: 0.08,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: {
+    opacity: 0,
+    y: 18,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.45,
+      ease: "easeOut",
+    },
+  },
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -88,34 +117,59 @@ export default function AdminDashboard() {
       : 0
 
   return (
-    <div
+    <motion.div
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
       style={{
         minHeight: "100%",
         background: "#05070a",
         color: "#fff",
         paddingBottom: 40,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <PageHeader
-        title="Gym Dashboard"
-        description="Operational overview for your gym."
+      {/* Ambient background */}
+      <div
+        className="dashboard-glow dashboard-glow-one"
+        aria-hidden="true"
       />
 
+      <div
+        className="dashboard-glow dashboard-glow-two"
+        aria-hidden="true"
+      />
+
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          title="Gym Dashboard"
+          description="Operational overview for your gym."
+        />
+      </motion.div>
+
       {/* Dashboard intro */}
-      <section
+      <motion.section
+        variants={itemVariants}
+        className="dashboard-hero"
         style={{
           marginBottom: 24,
           padding: "22px 24px",
           borderRadius: 20,
           border: "1px solid rgba(255,255,255,.075)",
-          background: "#0e131a",
+          background:
+            "linear-gradient(135deg, rgba(14,19,26,.98), rgba(9,13,18,.94))",
           position: "relative",
           overflow: "hidden",
         }}
       >
+        <div className="hero-orb hero-orb-one" />
+        <div className="hero-orb hero-orb-two" />
+
         <div
           style={{
             position: "relative",
+            zIndex: 2,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -132,10 +186,22 @@ export default function AdminDashboard() {
                 marginBottom: 8,
               }}
             >
-              <Activity
-                size={16}
-                style={{ color: "var(--gb-lime)" }}
-              />
+              <motion.div
+                animate={{
+                  scale: [1, 1.12, 1],
+                  opacity: [0.8, 1, 0.8],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <Activity
+                  size={16}
+                  style={{ color: "var(--gb-lime)" }}
+                />
+              </motion.div>
 
               <span
                 style={{
@@ -176,10 +242,17 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <button
+          <motion.button
             type="button"
             onClick={loadDashboard}
             disabled={refreshing}
+            whileHover={{
+              scale: refreshing ? 1 : 1.03,
+              y: refreshing ? 0 : -2,
+            }}
+            whileTap={{
+              scale: refreshing ? 1 : 0.97,
+            }}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -195,7 +268,6 @@ export default function AdminDashboard() {
               fontWeight: 900,
               cursor: refreshing ? "not-allowed" : "pointer",
               opacity: refreshing ? 0.6 : 1,
-              transition: "background .2s ease, opacity .2s ease",
             }}
           >
             <RefreshCw
@@ -208,13 +280,14 @@ export default function AdminDashboard() {
             />
 
             {refreshing ? "Refreshing..." : "Refresh"}
-          </button>
+          </motion.button>
         </div>
-      </section>
+      </motion.section>
 
       {/* KPI statistics */}
-      <section
-        className="stats-grid"
+      <motion.section
+        variants={itemVariants}
+        className="stats-grid dashboard-stats"
         style={{
           marginBottom: 24,
         }}
@@ -225,6 +298,7 @@ export default function AdminDashboard() {
           value={totalMembers}
           detail={`${activeMembers} active members`}
           accent="lime"
+          delay={0}
         />
 
         <DashboardStat
@@ -233,6 +307,7 @@ export default function AdminDashboard() {
           value={stats.totalExercises || 0}
           detail="Available in exercise library"
           accent="yellow"
+          delay={0.08}
         />
 
         <DashboardStat
@@ -241,6 +316,7 @@ export default function AdminDashboard() {
           value={stats.totalPrograms || 0}
           detail="Programs available to your gym"
           accent="white"
+          delay={0.16}
         />
 
         <DashboardStat
@@ -249,11 +325,14 @@ export default function AdminDashboard() {
           value={stats.activeAssignments || 0}
           detail="Current member assignments"
           accent="lime"
+          delay={0.24}
         />
-      </section>
+      </motion.section>
 
       {/* Membership health */}
-      <section
+      <motion.section
+        variants={itemVariants}
+        className="dashboard-two-column"
         style={{
           display: "grid",
           gridTemplateColumns:
@@ -263,25 +342,37 @@ export default function AdminDashboard() {
         }}
       >
         {/* Member overview */}
-        <div className="dashboard-panel">
+        <motion.div
+          className="dashboard-panel"
+          whileHover={{
+            y: -3,
+            borderColor: "rgba(215,255,53,.14)",
+          }}
+          transition={{
+            duration: 0.2,
+          }}
+        >
           <PanelHeader
             icon={Users}
             eyebrow="Membership"
             title="Member Overview"
             description="A quick look at your gym's current membership activity."
             action={
-              <button
+              <motion.button
                 type="button"
                 onClick={() => navigate("/admin/members")}
                 className="dashboard-link"
+                whileHover={{ x: 3 }}
+                whileTap={{ scale: 0.97 }}
               >
                 View members
                 <ArrowRight size={14} />
-              </button>
+              </motion.button>
             }
           />
 
           <div
+            className="mini-metrics-grid"
             style={{
               display: "grid",
               gridTemplateColumns:
@@ -294,6 +385,7 @@ export default function AdminDashboard() {
               label="Total members"
               value={totalMembers}
               icon={Users}
+              delay={0}
             />
 
             <MiniMetric
@@ -301,6 +393,7 @@ export default function AdminDashboard() {
               value={activeMembers}
               icon={CheckCircle2}
               accent="lime"
+              delay={0.08}
             />
 
             <MiniMetric
@@ -308,6 +401,7 @@ export default function AdminDashboard() {
               value={`${activeRate}%`}
               icon={Activity}
               accent="yellow"
+              delay={0.16}
             />
           </div>
 
@@ -331,7 +425,16 @@ export default function AdminDashboard() {
                 Member activity
               </span>
 
-              <span
+              <motion.span
+                key={activeRate}
+                initial={{
+                  opacity: 0,
+                  scale: 0.8,
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
                 style={{
                   fontSize: 12,
                   fontWeight: 900,
@@ -339,7 +442,7 @@ export default function AdminDashboard() {
                 }}
               >
                 {activeRate}%
-              </span>
+              </motion.span>
             </div>
 
             <div
@@ -350,21 +453,42 @@ export default function AdminDashboard() {
                 overflow: "hidden",
               }}
             >
-              <div
-                style={{
+              <motion.div
+                initial={{
+                  width: 0,
+                }}
+                animate={{
                   width: `${activeRate}%`,
+                }}
+                transition={{
+                  duration: 1,
+                  delay: 0.2,
+                  ease: "easeOut",
+                }}
+                style={{
                   height: "100%",
                   borderRadius: 999,
-                  background: "var(--gb-lime)",
-                  transition: "width .4s ease",
+                  background:
+                    "linear-gradient(90deg, var(--gb-lime), #efff85)",
+                  boxShadow:
+                    "0 0 14px rgba(215,255,53,.28)",
                 }}
               />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Operations */}
-        <div className="dashboard-panel">
+        <motion.div
+          className="dashboard-panel"
+          whileHover={{
+            y: -3,
+            borderColor: "rgba(255,225,59,.13)",
+          }}
+          transition={{
+            duration: 0.2,
+          }}
+        >
           <PanelHeader
             icon={ShieldCheck}
             eyebrow="Operations"
@@ -403,11 +527,12 @@ export default function AdminDashboard() {
               onClick={() => navigate("/admin/members")}
             />
           </div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* SaaS subscription */}
-      <section
+      <motion.section
+        variants={itemVariants}
         className="dashboard-panel"
         style={{
           marginBottom: 18,
@@ -432,7 +557,15 @@ export default function AdminDashboard() {
                   marginBottom: 7,
                 }}
               >
-                <div
+                <motion.div
+                  animate={{
+                    y: [0, -3, 0],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   style={{
                     width: 36,
                     height: 36,
@@ -449,7 +582,7 @@ export default function AdminDashboard() {
                     size={18}
                     style={{ color: "var(--gb-lime)" }}
                   />
-                </div>
+                </motion.div>
 
                 <div>
                   <div
@@ -492,12 +625,25 @@ export default function AdminDashboard() {
             </div>
 
             {!subscriptionLoading && (
-              <StatusBadge status={effectiveStatus} />
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  scale: 0.85,
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
+              >
+                <StatusBadge status={effectiveStatus} />
+              </motion.div>
             )}
           </div>
 
           {subscriptionLoading ? (
-            <div
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               style={{
                 marginTop: 22,
                 padding: 22,
@@ -509,10 +655,11 @@ export default function AdminDashboard() {
               }}
             >
               Loading subscription details...
-            </div>
+            </motion.div>
           ) : subscription ? (
             <>
               <div
+                className="subscription-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns:
@@ -529,6 +676,7 @@ export default function AdminDashboard() {
                     "—"
                   }
                   accent
+                  delay={0}
                 />
 
                 <InfoItem
@@ -539,11 +687,13 @@ export default function AdminDashboard() {
                   )} / ${
                     subscription.billingCycle || "monthly"
                   }`}
+                  delay={0.05}
                 />
 
                 <InfoItem
                   label="Started"
                   value={date(subscription.startDate)}
+                  delay={0.1}
                 />
 
                 <InfoItem
@@ -553,11 +703,13 @@ export default function AdminDashboard() {
                       : "Current period ends"
                   }
                   value={date(endDate)}
+                  delay={0.15}
                 />
 
                 <InfoItem
                   label="Next billing"
                   value={date(subscription.nextBillingDate)}
+                  delay={0.2}
                 />
 
                 <InfoItem
@@ -565,10 +717,23 @@ export default function AdminDashboard() {
                   value={formatPaymentStatus(
                     subscription.paymentStatus,
                   )}
+                  delay={0.25}
                 />
               </div>
 
-              <div
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  y: 10,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  duration: 0.4,
+                  delay: 0.25,
+                }}
                 style={{
                   marginTop: 16,
                   padding: "15px 16px",
@@ -637,12 +802,19 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <button
+                <motion.button
                   className="btn primary"
                   type="button"
                   onClick={() =>
                     navigate("/admin/subscription")
                   }
+                  whileHover={{
+                    scale: 1.03,
+                    x: 2,
+                  }}
+                  whileTap={{
+                    scale: 0.97,
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -652,11 +824,19 @@ export default function AdminDashboard() {
                 >
                   Manage Subscription
                   <ArrowRight size={15} />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </>
           ) : (
-            <div
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
               style={{
                 marginTop: 20,
                 padding: 20,
@@ -703,12 +883,18 @@ export default function AdminDashboard() {
                     your gym platform access.
                   </p>
 
-                  <button
+                  <motion.button
                     className="btn primary"
                     type="button"
                     onClick={() =>
                       navigate("/admin/subscription")
                     }
+                    whileHover={{
+                      scale: 1.03,
+                    }}
+                    whileTap={{
+                      scale: 0.97,
+                    }}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -717,19 +903,21 @@ export default function AdminDashboard() {
                   >
                     View SaaS Plans
                     <ArrowRight size={15} />
-                  </button>
+                  </motion.button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
-      </section>
+      </motion.section>
 
       {/* Tenant workspace */}
-      <section
+      <motion.section
+        variants={itemVariants}
         className="dashboard-panel"
         style={{
-          background: "#0e131a",
+          background:
+            "linear-gradient(135deg, #0e131a, #0a0e13)",
         }}
       >
         <div
@@ -739,7 +927,15 @@ export default function AdminDashboard() {
             gap: 13,
           }}
         >
-          <div
+          <motion.div
+            animate={{
+              y: [0, -4, 0],
+            }}
+            transition={{
+              duration: 3.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
             style={{
               width: 42,
               height: 42,
@@ -757,7 +953,7 @@ export default function AdminDashboard() {
               size={19}
               style={{ color: "var(--gb-yellow)" }}
             />
-          </div>
+          </motion.div>
 
           <div>
             <div
@@ -801,6 +997,7 @@ export default function AdminDashboard() {
         </div>
 
         <div
+          className="workspace-grid"
           style={{
             display: "grid",
             gridTemplateColumns:
@@ -816,7 +1013,7 @@ export default function AdminDashboard() {
           <WorkspaceItem label="Schedules" />
           <WorkspaceItem label="Revenue" />
         </div>
-      </section>
+      </motion.section>
 
       <style>{`
         @keyframes spin {
@@ -834,7 +1031,16 @@ export default function AdminDashboard() {
           background: #0e131a;
           border-radius: 20px;
           padding: 20px;
-          box-shadow: none;
+          box-shadow: 0 12px 35px rgba(0,0,0,.12);
+          position: relative;
+          z-index: 2;
+          transition:
+            border-color .25s ease,
+            box-shadow .25s ease;
+        }
+
+        .dashboard-panel:hover {
+          box-shadow: 0 18px 45px rgba(0,0,0,.18);
         }
 
         .dashboard-link {
@@ -854,9 +1060,91 @@ export default function AdminDashboard() {
           opacity: .8;
         }
 
+        .dashboard-glow {
+          position: absolute;
+          pointer-events: none;
+          border-radius: 999px;
+          filter: blur(70px);
+          opacity: .11;
+          z-index: 0;
+        }
+
+        .dashboard-glow-one {
+          width: 240px;
+          height: 240px;
+          background: var(--gb-lime);
+          top: 70px;
+          right: -90px;
+        }
+
+        .dashboard-glow-two {
+          width: 180px;
+          height: 180px;
+          background: var(--gb-yellow);
+          top: 620px;
+          left: -90px;
+          opacity: .07;
+        }
+
+        .hero-orb {
+          position: absolute;
+          border-radius: 999px;
+          pointer-events: none;
+          filter: blur(2px);
+        }
+
+        .hero-orb-one {
+          width: 180px;
+          height: 180px;
+          right: -75px;
+          top: -105px;
+          background: rgba(215,255,53,.07);
+          animation: floatOrb 6s ease-in-out infinite;
+        }
+
+        .hero-orb-two {
+          width: 120px;
+          height: 120px;
+          left: 42%;
+          bottom: -95px;
+          background: rgba(255,225,59,.045);
+          animation: floatOrbReverse 7s ease-in-out infinite;
+        }
+
+        .dashboard-stats {
+          position: relative;
+          z-index: 2;
+        }
+
+        @keyframes floatOrb {
+          0%,
+          100% {
+            transform: translate3d(0,0,0);
+          }
+
+          50% {
+            transform: translate3d(-12px,12px,0);
+          }
+        }
+
+        @keyframes floatOrbReverse {
+          0%,
+          100% {
+            transform: translate3d(0,0,0);
+          }
+
+          50% {
+            transform: translate3d(10px,-10px,0);
+          }
+        }
+
         @media (max-width: 900px) {
           .dashboard-panel {
             padding: 17px;
+          }
+
+          .dashboard-two-column {
+            grid-template-columns: 1fr !important;
           }
         }
 
@@ -864,9 +1152,43 @@ export default function AdminDashboard() {
           .dashboard-panel {
             border-radius: 17px;
           }
+
+          .dashboard-hero {
+            padding: 18px !important;
+            border-radius: 17px !important;
+          }
+
+          .dashboard-hero button {
+            width: 100%;
+          }
+
+          .mini-metrics-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .subscription-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .workspace-grid {
+            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .workspace-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-orb-one,
+          .hero-orb-two {
+            animation: none;
+          }
         }
       `}</style>
-    </div>
+    </motion.div>
   )
 }
 
@@ -880,6 +1202,7 @@ function DashboardStat({
   value,
   detail,
   accent = "lime",
+  delay = 0,
 }) {
   const accents = {
     lime: {
@@ -901,31 +1224,74 @@ function DashboardStat({
     },
   }
 
-  const theme =
-    accents[accent] ||
-    accents.lime
+  const theme = accents[accent] || accents.lime
 
   return (
-    <div
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 22,
+        scale: 0.97,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        scale: 1,
+      }}
+      transition={{
+        duration: 0.45,
+        delay,
+        ease: "easeOut",
+      }}
+      whileHover={{
+        y: -5,
+        scale: 1.012,
+      }}
+      whileTap={{
+        scale: 0.99,
+      }}
       style={{
         overflow: "hidden",
         padding: 18,
         borderRadius: 18,
         border: "1px solid rgba(255,255,255,.075)",
-        background: "#0e131a",
+        background:
+          "linear-gradient(145deg, #0e131a, #0a0e13)",
         minHeight: 142,
-        boxShadow: "none",
+        boxShadow:
+          "0 10px 28px rgba(0,0,0,.12)",
+        position: "relative",
       }}
     >
       <div
         style={{
+          position: "absolute",
+          width: 110,
+          height: 110,
+          right: -45,
+          top: -50,
+          borderRadius: "50%",
+          background: theme.background,
+          filter: "blur(3px)",
+          opacity: 0.6,
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "flex-start",
           gap: 10,
         }}
       >
-        <div
+        <motion.div
+          whileHover={{
+            rotate: 5,
+            scale: 1.08,
+          }}
           style={{
             width: 40,
             height: 40,
@@ -939,11 +1305,13 @@ function DashboardStat({
           }}
         >
           <Icon size={19} />
-        </div>
+        </motion.div>
       </div>
 
       <div
         style={{
+          position: "relative",
+          zIndex: 2,
           marginTop: 16,
         }}
       >
@@ -959,7 +1327,19 @@ function DashboardStat({
           {label}
         </div>
 
-        <div
+        <motion.div
+          key={String(value)}
+          initial={{
+            opacity: 0,
+            y: 8,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.35,
+          }}
           style={{
             marginTop: 3,
             fontSize: 28,
@@ -969,7 +1349,7 @@ function DashboardStat({
           }}
         >
           {value}
-        </div>
+        </motion.div>
 
         <div
           style={{
@@ -981,7 +1361,7 @@ function DashboardStat({
           {detail}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -1011,7 +1391,11 @@ function PanelHeader({
           gap: 11,
         }}
       >
-        <div
+        <motion.div
+          whileHover={{
+            scale: 1.08,
+            rotate: 3,
+          }}
           style={{
             width: 36,
             height: 36,
@@ -1026,7 +1410,7 @@ function PanelHeader({
           }}
         >
           <Icon size={17} />
-        </div>
+        </motion.div>
 
         <div>
           <div
@@ -1080,6 +1464,7 @@ function MiniMetric({
   value,
   icon: Icon,
   accent = "white",
+  delay = 0,
 }) {
   const color =
     accent === "lime"
@@ -1089,12 +1474,28 @@ function MiniMetric({
         : "#c8ced6"
 
   return (
-    <div
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 12,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.35,
+        delay,
+      }}
+      whileHover={{
+        y: -3,
+      }}
       style={{
         padding: 14,
         borderRadius: 14,
         background: "#090d12",
         border: "1px solid rgba(255,255,255,.055)",
+        transition: "border-color .2s ease",
       }}
     >
       <div
@@ -1121,7 +1522,19 @@ function MiniMetric({
         />
       </div>
 
-      <div
+      <motion.div
+        key={String(value)}
+        initial={{
+          opacity: 0,
+          scale: 0.8,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+        }}
+        transition={{
+          duration: 0.35,
+        }}
         style={{
           marginTop: 9,
           fontSize: 23,
@@ -1130,8 +1543,8 @@ function MiniMetric({
         }}
       >
         {value}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -1145,9 +1558,16 @@ function QuickAction({
   onClick,
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      whileHover={{
+        x: 4,
+        scale: 1.01,
+      }}
+      whileTap={{
+        scale: 0.98,
+      }}
       style={{
         width: "100%",
         minHeight: 45,
@@ -1161,10 +1581,13 @@ function QuickAction({
         color: "#dce1e7",
         textAlign: "left",
         cursor: "pointer",
-        transition: "background .2s ease",
       }}
     >
-      <span
+      <motion.span
+        whileHover={{
+          scale: 1.08,
+          rotate: 3,
+        }}
         style={{
           width: 30,
           height: 30,
@@ -1178,7 +1601,7 @@ function QuickAction({
         }}
       >
         <Icon size={15} />
-      </span>
+      </motion.span>
 
       <span
         style={{
@@ -1190,11 +1613,20 @@ function QuickAction({
         {title}
       </span>
 
-      <ArrowRight
-        size={14}
-        style={{ color: "#59616c" }}
-      />
-    </button>
+      <motion.span
+        whileHover={{
+          x: 3,
+        }}
+        style={{
+          display: "flex",
+        }}
+      >
+        <ArrowRight
+          size={14}
+          style={{ color: "#59616c" }}
+        />
+      </motion.span>
+    </motion.button>
   )
 }
 
@@ -1206,9 +1638,25 @@ function InfoItem({
   label,
   value,
   accent = false,
+  delay = 0,
 }) {
   return (
-    <div
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 10,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      transition={{
+        duration: 0.35,
+        delay,
+      }}
+      whileHover={{
+        y: -2,
+      }}
       style={{
         padding: 13,
         borderRadius: 13,
@@ -1240,7 +1688,7 @@ function InfoItem({
       >
         {value}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -1266,7 +1714,23 @@ function StatusBadge({
     status === "trial"
 
   return (
-    <span
+    <motion.span
+      animate={
+        isGood
+          ? {
+              boxShadow: [
+                "0 0 0 rgba(215,255,53,0)",
+                "0 0 16px rgba(215,255,53,.10)",
+                "0 0 0 rgba(215,255,53,0)",
+              ],
+            }
+          : undefined
+      }
+      transition={{
+        duration: 2.8,
+        repeat: Infinity,
+        ease: "easeInOut",
+      }}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -1289,11 +1753,25 @@ function StatusBadge({
         }`,
       }}
     >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: isGood
+            ? "var(--gb-lime)"
+            : "var(--gb-yellow)",
+          boxShadow: isGood
+            ? "0 0 8px rgba(215,255,53,.5)"
+            : "0 0 8px rgba(255,225,59,.35)",
+        }}
+      />
+
       {labels[status] ||
         String(
           status || "UNKNOWN",
         ).toUpperCase()}
-    </span>
+    </motion.span>
   )
 }
 
@@ -1305,7 +1783,11 @@ function WorkspaceItem({
   label,
 }) {
   return (
-    <div
+    <motion.div
+      whileHover={{
+        y: -3,
+        scale: 1.015,
+      }}
       style={{
         display: "flex",
         alignItems: "center",
@@ -1327,7 +1809,7 @@ function WorkspaceItem({
       />
 
       {label}
-    </div>
+    </motion.div>
   )
 }
 

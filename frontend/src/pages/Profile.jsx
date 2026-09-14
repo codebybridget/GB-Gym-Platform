@@ -12,12 +12,18 @@ import {
   Sun,
   Moon,
   UserRound,
+  Sparkles,
 } from "lucide-react"
 
 import {
   useEffect,
   useState,
 } from "react"
+
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion"
 
 import {
   useNavigate,
@@ -79,6 +85,40 @@ const goals = [
 ]
 
 
+const pageVariants = {
+  hidden: {
+    opacity: 0,
+  },
+
+  visible: {
+    opacity: 1,
+
+    transition: {
+      duration: 0.45,
+      staggerChildren: 0.06,
+    },
+  },
+}
+
+
+const sectionVariants = {
+  hidden: {
+    opacity: 0,
+    y: 18,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
+    },
+  },
+}
+
+
 function resolveProfilePhoto(
   photo,
 ) {
@@ -88,10 +128,6 @@ function resolveProfilePhoto(
 
   const value =
     String(photo).trim()
-
-  if (!value) {
-    return ""
-  }
 
   if (
     value.startsWith(
@@ -150,6 +186,7 @@ function parseMeasurement(
         value.value === ""
           ? null
           : Number(value.value),
+
       unit:
         value.unit ||
         fallbackUnit,
@@ -182,6 +219,7 @@ function parseMeasurement(
     value: Number(
       match[1],
     ),
+
     unit:
       match[2]
         ? match[2].toLowerCase()
@@ -449,7 +487,7 @@ function Profile() {
 
   /*
   |--------------------------------------------------------------------------
-  | Load profile from MongoDB
+  | Load profile
   |--------------------------------------------------------------------------
   */
 
@@ -484,13 +522,6 @@ function Profile() {
               existingProfile,
             )
 
-          /*
-          |--------------------------------------------------------------------------
-          | IMPORTANT:
-          | Use the photo returned by MongoDB as the current photo.
-          |--------------------------------------------------------------------------
-          */
-
           const serverPhoto =
             user?.profilePhoto ||
             backendProfile?.profilePhoto ||
@@ -504,13 +535,6 @@ function Profile() {
           setProfile(
             backendProfile,
           )
-
-          /*
-          |--------------------------------------------------------------------------
-          | Keep both local profile storage and the visible preview
-          | synchronized with the backend.
-          |--------------------------------------------------------------------------
-          */
 
           saveProfile(
             backendProfile,
@@ -585,6 +609,12 @@ function Profile() {
   }
 
 
+  /*
+  |--------------------------------------------------------------------------
+  | Photo selection
+  |--------------------------------------------------------------------------
+  */
+
   const handlePhotoSelect = (
     event,
   ) => {
@@ -654,6 +684,12 @@ function Profile() {
   }
 
 
+  /*
+  |--------------------------------------------------------------------------
+  | Upload profile photo to Cloudinary through backend
+  |--------------------------------------------------------------------------
+  */
+
   const handlePhotoUpload =
     async () => {
       if (
@@ -712,20 +748,8 @@ function Profile() {
                   savedPhoto,
               }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Force the saved photo into the profile object.
-        |--------------------------------------------------------------------------
-        */
-
         updatedProfile.profilePhoto =
           savedPhoto
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save the server value locally.
-        |--------------------------------------------------------------------------
-        */
 
         saveProfile(
           updatedProfile,
@@ -735,22 +759,13 @@ function Profile() {
           updatedProfile,
         )
 
-        /*
-        |--------------------------------------------------------------------------
-        | IMPORTANT:
-        | Resolve the backend path before displaying it.
-        |--------------------------------------------------------------------------
-        */
-
         setPhotoPreview(
           resolveProfilePhoto(
             savedPhoto,
           ),
         )
 
-        setPhotoFile(
-          null,
-        )
+        setPhotoFile(null)
 
         setSaved(true)
 
@@ -790,7 +805,7 @@ function Profile() {
 
   /*
   |--------------------------------------------------------------------------
-  | Save profile to MongoDB
+  | Save profile
   |--------------------------------------------------------------------------
   */
 
@@ -985,7 +1000,6 @@ function Profile() {
         ],
       }
 
-
       const response =
         await updateMyProfile(
           payload,
@@ -999,7 +1013,6 @@ function Profile() {
             "Unable to update profile.",
         )
       }
-
 
       const savedUser =
         response?.user
@@ -1031,14 +1044,6 @@ function Profile() {
                 ),
             }
 
-
-      /*
-      |--------------------------------------------------------------------------
-      | NEVER lose the existing profile photo when saving normal
-      | profile information.
-      |--------------------------------------------------------------------------
-      */
-
       const returnedPhoto =
         savedUser?.profilePhoto ||
         response?.profilePhoto ||
@@ -1048,7 +1053,6 @@ function Profile() {
       updatedProfile.profilePhoto =
         returnedPhoto
 
-
       saveProfile(
         updatedProfile,
       )
@@ -1056,12 +1060,6 @@ function Profile() {
       setProfile(
         updatedProfile,
       )
-
-      /*
-      |--------------------------------------------------------------------------
-      | Keep the visible photo synchronized after saving the profile.
-      |--------------------------------------------------------------------------
-      */
 
       if (returnedPhoto) {
         setPhotoPreview(
@@ -1097,16 +1095,12 @@ function Profile() {
 
 
   const handleLogout = () => {
-    setShowLogoutModal(
-      true,
-    )
+    setShowLogoutModal(true)
   }
 
 
   const confirmLogout = () => {
-    setShowLogoutModal(
-      false,
-    )
+    setShowLogoutModal(false)
 
     logout()
 
@@ -1128,13 +1122,28 @@ function Profile() {
 
 
   return (
-    <div className="min-h-screen bg-black pb-28 text-white">
+    <motion.div
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+      className="min-h-screen bg-[#020617] pb-28 text-white"
+    >
 
-      <header className="border-b border-white/10">
+      {/* Header */}
+
+      <motion.header
+        variants={sectionVariants}
+        className="border-b border-white/10 bg-[#07111f]/95 backdrop-blur-xl"
+      >
 
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
 
-          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime-400/40 bg-yellow-400 text-black">
+          <motion.div
+            whileHover={{
+              scale: 1.05,
+            }}
+            className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-lime-400/40 bg-yellow-400 text-black"
+          >
 
             {photoPreview ? (
               <img
@@ -1144,11 +1153,6 @@ function Profile() {
                 onError={(
                   event,
                 ) => {
-                  console.error(
-                    "Profile photo failed to load:",
-                    photoPreview,
-                  )
-
                   event.currentTarget.style.display =
                     "none"
                 }}
@@ -1159,12 +1163,12 @@ function Profile() {
               />
             )}
 
-          </div>
+          </motion.div>
 
 
-          <div>
+          <div className="min-w-0">
 
-            <p className="text-[10px] font-black uppercase tracking-widest text-lime-400">
+            <p className="truncate text-[10px] font-black uppercase tracking-widest text-lime-400">
               {gymMemberLabel}
             </p>
 
@@ -1176,28 +1180,56 @@ function Profile() {
 
         </div>
 
-      </header>
+      </motion.header>
 
 
       <main className="mx-auto w-full max-w-md px-5 py-6">
 
-        {error && (
-          <div className="mb-5 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-400">
-            {error}
-          </div>
-        )}
+        {/* Error */}
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: -12,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              exit={{
+                opacity: 0,
+                y: -8,
+              }}
+              className="mb-5 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-400"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
 
-        {/* PROFILE PHOTO */}
+        {/* Profile Photo */}
 
         {!loading && (
-          <section className="mb-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <motion.section
+            variants={sectionVariants}
+            className="relative mb-5 overflow-hidden rounded-3xl border border-white/10 bg-[#07111f] p-5"
+          >
 
-            <div className="flex items-center gap-4">
+            <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-lime-400/10 blur-3xl" />
+
+            <div className="relative flex items-center gap-4">
 
               <div className="relative shrink-0">
 
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-lime-400/40 bg-black">
+                <motion.div
+                  whileHover={{
+                    scale: 1.03,
+                  }}
+                  className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-lime-400/40 bg-black shadow-xl shadow-lime-950/20"
+                >
 
                   {photoPreview ? (
                     <img
@@ -1207,11 +1239,6 @@ function Profile() {
                       onError={(
                         event,
                       ) => {
-                        console.error(
-                          "Profile photo failed to load:",
-                          photoPreview,
-                        )
-
                         event.currentTarget.style.display =
                           "none"
                       }}
@@ -1223,17 +1250,23 @@ function Profile() {
                     />
                   )}
 
-                </div>
+                </motion.div>
 
 
-                <label
+                <motion.label
                   htmlFor="profile-photo-input"
-                  className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-lime-400 text-black shadow-lg"
+                  whileHover={{
+                    scale: 1.08,
+                  }}
+                  whileTap={{
+                    scale: 0.92,
+                  }}
+                  className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-lime-400 text-black shadow-lg shadow-lime-400/20"
                 >
                   <Camera
                     size={17}
                   />
-                </label>
+                </motion.label>
 
 
                 <input
@@ -1251,9 +1284,18 @@ function Profile() {
 
               <div className="min-w-0 flex-1">
 
-                <p className="text-xs font-black uppercase tracking-wider text-lime-400">
-                  Profile Photo
-                </p>
+                <div className="flex items-center gap-2">
+
+                  <Sparkles
+                    size={13}
+                    className="shrink-0 text-yellow-400"
+                  />
+
+                  <p className="text-xs font-black uppercase tracking-wider text-lime-400">
+                    Profile Photo
+                  </p>
+
+                </div>
 
                 <h2 className="mt-1 text-lg font-black">
                   Your Profile Picture
@@ -1268,53 +1310,94 @@ function Profile() {
             </div>
 
 
-            {photoFile && (
-              <div className="mt-4 flex gap-3">
-
-                <button
-                  type="button"
-                  onClick={
-                    handlePhotoUpload
-                  }
-                  disabled={
-                    photoUploading
-                  }
-                  className="flex-1 rounded-2xl bg-lime-400 px-4 py-3 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-60"
+            <AnimatePresence>
+              {photoFile && (
+                <motion.div
+                  initial={{
+                    opacity: 0,
+                    height: 0,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    height: "auto",
+                  }}
+                  exit={{
+                    opacity: 0,
+                    height: 0,
+                  }}
+                  className="overflow-hidden"
                 >
-                  {photoUploading
-                    ? "UPLOADING..."
-                    : "UPLOAD PHOTO"}
-                </button>
+
+                  <div className="mt-4 flex gap-3">
+
+                    <motion.button
+                      type="button"
+                      onClick={
+                        handlePhotoUpload
+                      }
+                      disabled={
+                        photoUploading
+                      }
+                      whileTap={{
+                        scale: 0.98,
+                      }}
+                      className="flex-1 rounded-2xl bg-lime-400 px-4 py-3 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {photoUploading
+                        ? "UPLOADING..."
+                        : "UPLOAD PHOTO"}
+                    </motion.button>
 
 
-                <button
-                  type="button"
-                  onClick={
-                    handlePhotoCancel
-                  }
-                  disabled={
-                    photoUploading
-                  }
-                  className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-xs font-black text-gray-400 disabled:opacity-60"
-                >
-                  CANCEL
-                </button>
+                    <motion.button
+                      type="button"
+                      onClick={
+                        handlePhotoCancel
+                      }
+                      disabled={
+                        photoUploading
+                      }
+                      whileTap={{
+                        scale: 0.98,
+                      }}
+                      className="rounded-2xl border border-white/10 bg-black px-4 py-3 text-xs font-black text-gray-400 disabled:opacity-60"
+                    >
+                      CANCEL
+                    </motion.button>
 
-              </div>
-            )}
+                  </div>
 
-          </section>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+          </motion.section>
         )}
 
 
         {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
+          <motion.div
+            variants={sectionVariants}
+            className="rounded-3xl border border-white/10 bg-[#07111f] p-8 text-center"
+          >
 
-            <p className="text-sm font-bold text-gray-400">
+            <motion.div
+              animate={{
+                rotate: 360,
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+              className="mx-auto h-8 w-8 rounded-full border-2 border-white/10 border-t-lime-400"
+            />
+
+            <p className="mt-4 text-sm font-bold text-gray-400">
               Loading your profile...
             </p>
 
-          </div>
+          </motion.div>
         ) : (
 
           <form
@@ -1323,9 +1406,12 @@ function Profile() {
             }
           >
 
-            {/* APPEARANCE */}
+            {/* Appearance */}
 
-            <section className="mt-5 rounded-3xl border border-lime-400/20 bg-white/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="rounded-3xl border border-lime-400/20 bg-lime-400/5 p-5"
+            >
 
               <div className="flex items-center justify-between gap-4">
 
@@ -1409,24 +1495,23 @@ function Profile() {
 
               </div>
 
-            </section>
+            </motion.section>
 
 
-            {/* PERSONAL INFORMATION */}
+            {/* Personal Information */}
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="mt-5 rounded-3xl border border-white/10 bg-[#07111f] p-5"
+            >
 
-              <div>
+              <p className="text-xs font-black uppercase tracking-wider text-gray-600">
+                Personal Information
+              </p>
 
-                <p className="text-xs font-black uppercase tracking-wider text-gray-600">
-                  Personal Information
-                </p>
-
-                <h2 className="mt-1 text-lg font-black">
-                  About You
-                </h2>
-
-              </div>
+              <h2 className="mt-1 text-lg font-black">
+                About You
+              </h2>
 
 
               <div className="mt-5 space-y-4">
@@ -1508,24 +1593,23 @@ function Profile() {
 
               </div>
 
-            </section>
+            </motion.section>
 
 
-            {/* CONTACT INFORMATION */}
+            {/* Contact Information */}
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="mt-5 rounded-3xl border border-white/10 bg-[#07111f] p-5"
+            >
 
-              <div>
+              <p className="text-xs font-black uppercase tracking-wider text-gray-600">
+                Contact Information
+              </p>
 
-                <p className="text-xs font-black uppercase tracking-wider text-gray-600">
-                  Contact Information
-                </p>
-
-                <h2 className="mt-1 text-lg font-black">
-                  How We Can Reach You
-                </h2>
-
-              </div>
+              <h2 className="mt-1 text-lg font-black">
+                How We Can Reach You
+              </h2>
 
 
               <div className="mt-5 space-y-4">
@@ -1589,40 +1673,42 @@ function Profile() {
 
               </div>
 
-            </section>
+            </motion.section>
 
 
-            {/* FITNESS GOAL */}
+            {/* Fitness Goal */}
 
-            <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="mt-5 rounded-3xl border border-white/10 bg-[#07111f] p-5"
+            >
 
-              <div>
+              <p className="text-xs font-black uppercase tracking-wider text-gray-600">
+                Fitness Goal
+              </p>
 
-                <p className="text-xs font-black uppercase tracking-wider text-gray-600">
-                  Fitness Goal
-                </p>
-
-                <h2 className="mt-1 text-lg font-black">
-                  What Are You Training For?
-                </h2>
-
-              </div>
+              <h2 className="mt-1 text-lg font-black">
+                What Are You Training For?
+              </h2>
 
 
               <div className="relative mt-5">
 
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{
+                    scale: 0.99,
+                  }}
                   onClick={() =>
                     setShowGoalOptions(
                       (current) =>
                         !current,
                     )
                   }
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black p-4 text-left"
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black p-4 text-left transition hover:border-lime-400/20"
                 >
 
-                  <div>
+                  <div className="min-w-0">
 
                     <p className="text-sm font-black">
                       {
@@ -1641,85 +1727,132 @@ function Profile() {
                   </div>
 
 
-                  <ChevronDown
-                    size={17}
-                    className="shrink-0 text-gray-600"
-                  />
+                  <motion.div
+                    animate={{
+                      rotate:
+                        showGoalOptions
+                          ? 180
+                          : 0,
+                    }}
+                  >
+                    <ChevronDown
+                      size={17}
+                      className="shrink-0 text-gray-600"
+                    />
+                  </motion.div>
 
-                </button>
+                </motion.button>
 
 
-                {showGoalOptions && (
-                  <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#111] shadow-2xl">
+                <AnimatePresence>
+                  {showGoalOptions && (
+                    <motion.div
+                      initial={{
+                        opacity: 0,
+                        y: -6,
+                        scale: 0.98,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                      }}
+                      exit={{
+                        opacity: 0,
+                        y: -6,
+                        scale: 0.98,
+                      }}
+                      className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#0b111b] shadow-2xl"
+                    >
 
-                    {goals.map(
-                      (goal) => (
-                        <button
-                          key={
-                            goal.value
-                          }
-                          type="button"
-                          onClick={() => {
-                            updateField(
-                              "goal",
-                              goal.value,
-                            )
+                      {goals.map(
+                        (
+                          goal,
+                          index,
+                        ) => (
+                          <motion.button
+                            key={
+                              goal.value
+                            }
+                            type="button"
+                            initial={{
+                              opacity: 0,
+                              x: -8,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                            }}
+                            transition={{
+                              delay:
+                                index *
+                                0.035,
+                            }}
+                            onClick={() => {
+                              updateField(
+                                "goal",
+                                goal.value,
+                              )
 
-                            setShowGoalOptions(
-                              false,
-                            )
-                          }}
-                          className={`w-full border-b border-white/5 p-4 text-left last:border-0 ${
-                            profile.goal ===
-                            goal.value
-                              ? "bg-lime-400/10"
-                              : ""
-                          }`}
-                        >
+                              setShowGoalOptions(
+                                false,
+                              )
+                            }}
+                            className={`w-full border-b border-white/5 p-4 text-left last:border-0 ${
+                              profile.goal ===
+                              goal.value
+                                ? "bg-lime-400/10"
+                                : "hover:bg-white/5"
+                            }`}
+                          >
 
-                          <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between">
 
-                            <p className="text-sm font-black">
+                              <p className="text-sm font-black">
+                                {
+                                  goal.label
+                                }
+                              </p>
+
+
+                              {profile.goal ===
+                                goal.value && (
+                                <Check
+                                  size={
+                                    16
+                                  }
+                                  className="text-lime-400"
+                                />
+                              )}
+
+                            </div>
+
+
+                            <p className="mt-1 text-xs leading-5 text-gray-600">
                               {
-                                goal.label
+                                goal.description
                               }
                             </p>
 
+                          </motion.button>
+                        ),
+                      )}
 
-                            {profile.goal ===
-                              goal.value && (
-                              <Check
-                                size={
-                                  16
-                                }
-                                className="text-lime-400"
-                              />
-                            )}
-
-                          </div>
-
-
-                          <p className="mt-1 text-xs leading-5 text-gray-600">
-                            {
-                              goal.description
-                            }
-                          </p>
-
-                        </button>
-                      ),
-                    )}
-
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
               </div>
 
-            </section>
+            </motion.section>
 
 
-            {/* MEDICAL INFORMATION */}
+            {/* Medical Information */}
 
-            <section className="mt-5 rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="mt-5 rounded-3xl border border-red-500/20 bg-red-500/5 p-5"
+            >
 
               <div className="flex items-start gap-3">
 
@@ -1766,12 +1899,15 @@ function Profile() {
                 className="mt-5 w-full resize-none rounded-2xl border border-red-500/20 bg-black px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-gray-700 focus:border-red-400"
               />
 
-            </section>
+            </motion.section>
 
 
-            {/* EMERGENCY CONTACT */}
+            {/* Emergency Contact */}
 
-            <section className="mt-5 rounded-3xl border border-yellow-400/20 bg-yellow-400/5 p-5">
+            <motion.section
+              variants={sectionVariants}
+              className="mt-5 rounded-3xl border border-yellow-400/20 bg-yellow-400/5 p-5"
+            >
 
               <div className="flex items-start gap-3">
 
@@ -1867,15 +2003,29 @@ function Profile() {
 
               </div>
 
-            </section>
+            </motion.section>
 
 
-            {/* SAVE */}
+            {/* Save */}
 
-            <button
+            <motion.button
               type="submit"
               disabled={saving}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 px-5 py-4 text-sm font-black text-black transition hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-60"
+              whileHover={
+                saving
+                  ? {}
+                  : {
+                      y: -2,
+                    }
+              }
+              whileTap={
+                saving
+                  ? {}
+                  : {
+                      scale: 0.98,
+                    }
+              }
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-lime-400 px-5 py-4 text-sm font-black text-black shadow-lg shadow-lime-400/10 transition hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
 
               {saving ? (
@@ -1901,92 +2051,135 @@ function Profile() {
                 </>
               )}
 
-            </button>
+            </motion.button>
 
           </form>
         )}
 
 
-        {/* LOGOUT */}
+        {/* Logout */}
 
-        <button
+        <motion.button
           type="button"
           onClick={
             handleLogout
           }
+          whileHover={{
+            y: -2,
+          }}
+          whileTap={{
+            scale: 0.98,
+          }}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm font-black text-red-400 transition hover:bg-red-500/20"
         >
           <LogOut
             size={18}
           />
           LOG OUT
-        </button>
+        </motion.button>
 
       </main>
 
 
-      {showLogoutModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="logout-dialog-title"
-        >
+      {/* Logout Modal */}
 
-          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#111] p-6 shadow-2xl">
+      <AnimatePresence>
+        {showLogoutModal && (
+          <motion.div
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-dialog-title"
+          >
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
-              <LogOut
-                size={24}
-              />
-            </div>
-
-            <h2
-              id="logout-dialog-title"
-              className="mt-5 text-xl font-black text-white"
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 20,
+                scale: 0.95,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: 20,
+                scale: 0.95,
+              }}
+              className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#111827] p-6 shadow-2xl"
             >
-              Log Out?
-            </h2>
 
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Are you sure you want to log out of your {gymName} account?
-            </p>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
+                <LogOut
+                  size={24}
+                />
+              </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowLogoutModal(
-                    false,
-                  )
-                }
-                className="rounded-2xl border border-white/10 bg-black px-4 py-3.5 text-sm font-black text-gray-400 transition hover:border-white/20 hover:text-white"
+              <h2
+                id="logout-dialog-title"
+                className="mt-5 text-xl font-black text-white"
               >
-                CANCEL
-              </button>
+                Log Out?
+              </h2>
 
-              <button
-                type="button"
-                onClick={
-                  confirmLogout
-                }
-                className="rounded-2xl bg-red-500 px-4 py-3.5 text-sm font-black text-white transition hover:bg-red-400"
-              >
-                LOG OUT
-              </button>
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                Are you sure you want to log out of your {gymName} account?
+              </p>
 
-            </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
 
-          </div>
+                <motion.button
+                  type="button"
+                  onClick={() =>
+                    setShowLogoutModal(
+                      false,
+                    )
+                  }
+                  whileTap={{
+                    scale: 0.97,
+                  }}
+                  className="rounded-2xl border border-white/10 bg-black px-4 py-3.5 text-sm font-black text-gray-400 transition hover:border-white/20 hover:text-white"
+                >
+                  CANCEL
+                </motion.button>
 
-        </div>
-      )}
+
+                <motion.button
+                  type="button"
+                  onClick={
+                    confirmLogout
+                  }
+                  whileTap={{
+                    scale: 0.97,
+                  }}
+                  className="rounded-2xl bg-red-500 px-4 py-3.5 text-sm font-black text-white transition hover:bg-red-400"
+                >
+                  LOG OUT
+                </motion.button>
+
+              </div>
+
+            </motion.div>
+
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
       <BottomNavigation />
 
-    </div>
+    </motion.div>
   )
 }
 
@@ -2032,7 +2225,7 @@ function ProfileField({
             ? 1
             : undefined
         }
-        className={`w-full rounded-2xl border border-white/10 bg-black px-4 py-3.5 text-sm font-bold text-white outline-none placeholder:text-gray-700 focus:border-lime-400 ${
+        className={`w-full rounded-2xl border border-white/10 bg-black px-4 py-3.5 text-sm font-bold text-white outline-none transition focus:border-lime-400 ${
           readOnly
             ? "cursor-not-allowed opacity-60"
             : ""
@@ -2053,12 +2246,17 @@ function BottomNavigation() {
 
       <div className="mx-auto grid max-w-md grid-cols-3 px-5 py-3">
 
-        <button
+        <motion.button
           type="button"
           onClick={() =>
-            navigate("/")
+            navigate(
+              "/dashboard",
+            )
           }
-          className="flex flex-col items-center gap-1 text-gray-600"
+          whileTap={{
+            scale: 0.9,
+          }}
+          className="flex flex-col items-center gap-1 text-gray-600 transition hover:text-lime-400"
         >
           <UserRound
             size={19}
@@ -2067,17 +2265,20 @@ function BottomNavigation() {
           <span className="text-[10px] font-bold">
             Home
           </span>
-        </button>
+        </motion.button>
 
 
-        <button
+        <motion.button
           type="button"
           onClick={() =>
             navigate(
               "/progress",
             )
           }
-          className="flex flex-col items-center gap-1 text-gray-600"
+          whileTap={{
+            scale: 0.9,
+          }}
+          className="flex flex-col items-center gap-1 text-gray-600 transition hover:text-lime-400"
         >
           <ShieldAlert
             size={19}
@@ -2086,17 +2287,20 @@ function BottomNavigation() {
           <span className="text-[10px] font-bold">
             Progress
           </span>
-        </button>
+        </motion.button>
 
 
-        <button
+        <motion.button
           type="button"
           onClick={() =>
             navigate(
               "/profile",
             )
           }
-          className="flex flex-col items-center gap-1 text-yellow-400"
+          whileTap={{
+            scale: 0.9,
+          }}
+          className="flex flex-col items-center gap-1 text-lime-400"
         >
           <UserRound
             size={19}
@@ -2105,7 +2309,7 @@ function BottomNavigation() {
           <span className="text-[10px] font-bold">
             Profile
           </span>
-        </button>
+        </motion.button>
 
       </div>
 
