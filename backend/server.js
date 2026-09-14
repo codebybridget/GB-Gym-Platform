@@ -60,11 +60,14 @@ const PORT =
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "https://localhost:5173",
+  "https://gb-gym-frontend.onrender.com",
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
-  "https://localhost:5173",
-].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index)
-
+].filter(Boolean).filter(
+  (value, index, values) =>
+    values.indexOf(value) === index,
+)
 
 /*
 |--------------------------------------------------------------------------
