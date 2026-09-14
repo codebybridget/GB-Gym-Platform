@@ -260,6 +260,21 @@ export const registerGym = async (
     const lastName =
       parts.join(" ") || "Owner"
 
+    /*
+    |--------------------------------------------------------------------------
+    | Create gym as inactive
+    |--------------------------------------------------------------------------
+    |
+    | Every newly registered gym starts inactive.
+    |
+    | A paid plan MUST NOT activate the gym during
+    | registration, even if the plan has trialDays.
+    |
+    | The gym will only become active after the
+    | required Paystack payment has been verified.
+    |--------------------------------------------------------------------------
+    */
+
     gym = await Gym.create({
       name: gymName.trim(),
       slug: await uniqueSlug(gymName),
@@ -271,22 +286,70 @@ export const registerGym = async (
 
     const now = new Date()
 
+    const planPrice = Number(plan.price) || 0
+
+    /*
+    |--------------------------------------------------------------------------
+    | Determine whether this is a free plan
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | trialDays must NEVER make a paid plan active.
+    |
+    | Only a plan with price === 0 can be activated
+    | immediately during registration.
+    |--------------------------------------------------------------------------
+    */
+
+    const isFreePlan = planPrice === 0
+    const requiresPayment = !isFreePlan
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trial handling
+    |--------------------------------------------------------------------------
+    |
+    | For a free plan, an available trial period can
+    | begin immediately.
+    |
+    | For a paid plan, trialDays must NOT activate the
+    | account before payment. Therefore the trial is
+    | not started during registration.
+    |
+    | The paid subscription remains pending until the
+    | payment verification flow activates it.
+    |--------------------------------------------------------------------------
+    */
+
     const trialDays = Number(
       plan.trialDays || 0,
     )
 
-    const trialEnd = trialDays
-      ? new Date(
-          now.getTime() +
-            trialDays * 86400000,
-        )
-      : null
+    const trialEnd =
+      isFreePlan && trialDays > 0
+        ? new Date(
+            now.getTime() +
+              trialDays * 86400000,
+          )
+        : null
 
-    const immediatelyActive =
-      Boolean(
-        trialEnd ||
-          Number(plan.price) === 0,
-      )
+    /*
+    |--------------------------------------------------------------------------
+    | Owner activation
+    |--------------------------------------------------------------------------
+    |
+    | FREE PLAN:
+    |   active immediately.
+    |
+    | PAID PLAN:
+    |   inactive until Paystack payment is verified.
+    |
+    | This is the critical payment-gating fix.
+    |--------------------------------------------------------------------------
+    */
+
+    const immediatelyActive = isFreePlan
 
     const owner = await User.create({
       firstName,
@@ -312,6 +375,34 @@ export const registerGym = async (
           periodDays * 86400000,
       )
 
+    /*
+    |--------------------------------------------------------------------------
+    | Create gym subscription
+    |--------------------------------------------------------------------------
+    |
+    | FREE:
+    |   trial -> trial
+    |   no trial -> active
+    |
+    | PAID:
+    |   ALWAYS pending
+    |   ALWAYS payment pending
+    |
+    | A paid plan cannot become active simply because
+    | trialDays exists.
+    |--------------------------------------------------------------------------
+    */
+
+    const subscriptionStatus = isFreePlan
+      ? trialEnd
+        ? "trial"
+        : "active"
+      : "pending"
+
+    const paymentStatus = isFreePlan
+      ? "paid"
+      : "pending"
+
     const sub =
       await GymSubscription.create({
         gym: gym._id,
@@ -328,26 +419,20 @@ export const registerGym = async (
         currentPeriodEnd,
         nextBillingDate:
           currentPeriodEnd,
-        status: trialEnd
-          ? "trial"
-          : Number(plan.price) === 0
-            ? "active"
-            : "pending",
-        paymentStatus:
-          Number(plan.price) === 0
-            ? "paid"
-            : "pending",
+        status: subscriptionStatus,
+        paymentStatus,
       })
 
-    if (immediatelyActive) {
+    /*
+    |--------------------------------------------------------------------------
+    | Activate FREE plan immediately
+    |--------------------------------------------------------------------------
+    */
+
+    if (isFreePlan) {
       gym.isActive = true
       await gym.save()
-    }
 
-    if (
-      trialEnd ||
-      Number(plan.price) === 0
-    ) {
       return res.status(201).json({
         success: true,
         gym,
@@ -357,65 +442,120 @@ export const registerGym = async (
       })
     }
 
-    const reference = `GB-${Date.now()}-${crypto
-      .randomBytes(4)
-      .toString("hex")}`
+    /*
+    |--------------------------------------------------------------------------
+    | PAID PLAN
+    |--------------------------------------------------------------------------
+    |
+    | From this point onward the gym and owner remain
+    | inactive.
+    |
+    | We create a pending platform transaction and
+    | initialize Paystack.
+    |--------------------------------------------------------------------------
+    */
 
-    sub.transactionReference =
-      reference
+    if (requiresPayment) {
+      const reference = `GB-${Date.now()}-${crypto
+        .randomBytes(4)
+        .toString("hex")}`
 
-    await sub.save()
+      sub.transactionReference =
+        reference
 
-    const tx =
-      await PlatformTransaction.create(
-        {
-          gym: gym._id,
-          subscription: sub._id,
-          plan: plan._id,
-          reference,
-          amount: plan.price,
-          currency: plan.currency,
-          status: "pending",
-          customerEmail: owner.email,
-        },
-      )
+      await sub.save()
 
-    const payment =
-      await initializePaystackTransaction(
-        {
-          email: owner.email,
-          amount: plan.price,
-          reference,
-          callbackUrl:
-            `${
-              process.env.FRONTEND_URL ||
-              "http://localhost:5173"
-            }/payment/callback`,
-          metadata: {
-            type: "gym_subscription",
-            gymId: String(gym._id),
-            ownerId: String(owner._id),
-            planId: String(plan._id),
-            transactionId: String(tx._id),
+      const tx =
+        await PlatformTransaction.create(
+          {
+            gym: gym._id,
+            subscription: sub._id,
+            plan: plan._id,
+            reference,
+            amount: plan.price,
+            currency: plan.currency,
+            status: "pending",
+            customerEmail: owner.email,
           },
-        },
-      )
+        )
 
-    return res.status(201).json({
-      success: true,
-      gym,
-      user: sanitize(owner),
-      requiresPayment: true,
-      reference,
-      authorization_url:
-        payment?.data?.authorization_url,
-      subscription: sub,
+      const payment =
+        await initializePaystackTransaction(
+          {
+            email: owner.email,
+            amount: plan.price,
+            reference,
+            callbackUrl:
+              `${
+                process.env.FRONTEND_URL ||
+                "http://localhost:5173"
+              }/payment/callback`,
+            metadata: {
+              type: "gym_subscription",
+              gymId: String(gym._id),
+              ownerId: String(owner._id),
+              planId: String(plan._id),
+              transactionId: String(tx._id),
+            },
+          },
+        )
+
+      return res.status(201).json({
+        success: true,
+        gym,
+        user: sanitize(owner),
+        requiresPayment: true,
+        reference,
+        authorization_url:
+          payment?.data?.authorization_url,
+        subscription: sub,
+      })
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Safety fallback
+    |--------------------------------------------------------------------------
+    |
+    | This should never be reached because every plan
+    | is either free or paid.
+    |--------------------------------------------------------------------------
+    */
+
+    return res.status(400).json({
+      success: false,
+      message:
+        "Unable to determine the selected plan payment status.",
     })
   } catch (error) {
     console.error(
       "Register gym error:",
       error,
     )
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cleanup partially-created gym
+    |--------------------------------------------------------------------------
+    |
+    | If registration fails after creating the gym,
+    | remove the incomplete gym record so we do not
+    | leave orphaned registrations behind.
+    |--------------------------------------------------------------------------
+    */
+
+    if (gym?._id) {
+      try {
+        await Gym.findByIdAndDelete(
+          gym._id,
+        )
+      } catch (cleanupError) {
+        console.error(
+          "Register gym cleanup error:",
+          cleanupError,
+        )
+      }
+    }
 
     return res.status(500).json({
       success: false,
