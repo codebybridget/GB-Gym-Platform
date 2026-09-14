@@ -578,14 +578,20 @@ export default function Settings() {
    * Example:
    * /gym/peakfit-wellness-center
    */
+  /*
+   * Production gym portal URL.
+   *
+   * The QR code must always point to the public
+   * frontend gym entry route, never to /login.
+   *
+   * Example:
+   * https://gb-gym-frontend.onrender.com/gym/cgf-fitness
+   */
   const memberPortalUrl = useMemo(() => {
     if (!gym?.slug) return ""
 
     const baseUrl =
-      window.location.origin.replace(
-        /\/$/,
-        ""
-      )
+      "https://gb-gym-frontend.onrender.com"
 
     return `${baseUrl}/gym/${encodeURIComponent(
       gym.slug

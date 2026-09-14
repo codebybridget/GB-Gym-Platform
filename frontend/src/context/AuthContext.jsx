@@ -83,6 +83,28 @@ const clearStoredAuthentication = ({
   }
 }
 
+const createAuthError = (
+  message,
+  code = "",
+  responseData = null,
+) => {
+  const error = new Error(
+    message || "Unable to login.",
+  )
+
+  if (code) {
+    error.code = code
+  }
+
+  if (responseData) {
+    error.response = {
+      data: responseData,
+    }
+  }
+
+  return error
+}
+
 export const AuthProvider = ({
   children,
 }) => {
@@ -154,7 +176,7 @@ export const AuthProvider = ({
             !data?.success ||
             !data?.user
           ) {
-            throw new Error(
+            throw createAuthError(
               "Unable to restore user session.",
             )
           }
@@ -167,7 +189,7 @@ export const AuthProvider = ({
             getStoredToken()
 
           if (!currentToken) {
-            throw new Error(
+            throw createAuthError(
               "Authentication session could not be restored.",
             )
           }
@@ -278,15 +300,17 @@ export const AuthProvider = ({
     password,
     requestedGymSlug = "",
   ) => {
+    const normalizedGymSlug =
+      requestedGymSlug?.trim() ||
+      getStoredGymSlug() ||
+      ""
+
     try {
       clearLegacyMemberStorage()
 
       localStorage.removeItem(
         SUBSCRIPTION_END_STORAGE_KEY,
       )
-
-      const normalizedGymSlug =
-        requestedGymSlug?.trim() || ""
 
       /*
        * Preserve the gym portal context.
@@ -297,19 +321,57 @@ export const AuthProvider = ({
           normalizedGymSlug,
         )
 
+        localStorage.setItem(
+          ENTRY_GYM_STORAGE_KEY,
+          normalizedGymSlug,
+        )
+
         setGymSlug(normalizedGymSlug)
       }
 
-      const data = await loginUser(
-        email,
-        password,
-        normalizedGymSlug,
-      )
+      let data
+
+      try {
+        data = await loginUser(
+          email,
+          password,
+          normalizedGymSlug,
+        )
+      } catch (requestError) {
+        const responseData =
+          requestError?.response?.data || {}
+
+        const backendCode =
+          responseData?.code ||
+          requestError?.code ||
+          ""
+
+        const backendMessage =
+          responseData?.message ||
+          requestError?.message ||
+          "Unable to login."
+
+        /*
+         * Preserve the backend error code.
+         *
+         * Important:
+         * GYM_SUBSCRIPTION_REQUIRED is used by
+         * the login page to send an unpaid gym
+         * owner to the Subscription page.
+         */
+        throw createAuthError(
+          backendMessage,
+          backendCode,
+          responseData,
+        )
+      }
 
       if (!data?.success) {
-        throw new Error(
+        throw createAuthError(
           data?.message ||
             "Login failed.",
+          data?.code || "",
+          data,
         )
       }
 
@@ -317,8 +379,12 @@ export const AuthProvider = ({
         data?.token ||
         data?.accessToken
 
+      /*
+       * A successful login response must always
+       * contain an authentication token.
+       */
       if (!receivedToken) {
-        throw new Error(
+        throw createAuthError(
           "Login succeeded but no authentication token was returned.",
         )
       }
@@ -332,8 +398,10 @@ export const AuthProvider = ({
         data?.user?.role ===
           "platform_owner"
       ) {
-        throw new Error(
+        throw createAuthError(
           "Platform owner accounts must sign in through the GB Platform login.",
+          "PLATFORM_OWNER_GYM_LOGIN_BLOCKED",
+          data,
         )
       }
 
@@ -352,8 +420,10 @@ export const AuthProvider = ({
           responseGymSlug !==
             normalizedGymSlug
         ) {
-          throw new Error(
+          throw createAuthError(
             "This account does not belong to the selected gym.",
+            "GYM_MISMATCH",
+            data,
           )
         }
       }
@@ -377,7 +447,7 @@ export const AuthProvider = ({
           !me?.success ||
           !me?.user
         ) {
-          throw new Error(
+          throw createAuthError(
             "Unable to retrieve authenticated user.",
           )
         }
@@ -397,8 +467,9 @@ export const AuthProvider = ({
             authenticatedGymSlug !==
               normalizedGymSlug
           ) {
-            throw new Error(
+            throw createAuthError(
               "This account does not belong to the selected gym.",
+              "GYM_MISMATCH",
             )
           }
 
@@ -406,8 +477,9 @@ export const AuthProvider = ({
             me.user?.role ===
             "platform_owner"
           ) {
-            throw new Error(
+            throw createAuthError(
               "Platform owner accounts must sign in through the GB Platform login.",
+              "PLATFORM_OWNER_GYM_LOGIN_BLOCKED",
             )
           }
         }
@@ -445,7 +517,17 @@ export const AuthProvider = ({
         /*
          * If the backend already returned the
          * authenticated user, retain that result.
+         *
+         * Do NOT hide a meaningful backend error
+         * code such as GYM_SUBSCRIPTION_REQUIRED.
          */
+        if (
+          meError?.code ===
+          "GYM_SUBSCRIPTION_REQUIRED"
+        ) {
+          throw meError
+        }
+
         if (data?.user) {
           return {
             success: true,
@@ -471,7 +553,21 @@ export const AuthProvider = ({
        */
       const currentGymSlug =
         requestedGymSlug?.trim() ||
+        normalizedGymSlug ||
         getStoredGymSlug()
+
+      /*
+       * Preserve the backend error code.
+       */
+      const errorCode =
+        error?.response?.data?.code ||
+        error?.code ||
+        ""
+
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to login."
 
       clearStoredAuthentication({
         preserveGymEntry: Boolean(
@@ -488,11 +584,14 @@ export const AuthProvider = ({
         setGymSlug("")
       }
 
-      throw new Error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Unable to login.",
-      )
+      const authError =
+        createAuthError(
+          errorMessage,
+          errorCode,
+          error?.response?.data || null,
+        )
+
+      throw authError
     }
   }
 
