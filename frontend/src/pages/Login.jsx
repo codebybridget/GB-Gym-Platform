@@ -6,71 +6,130 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const gymSlug = params.get("gym") || sessionStorage.getItem("gb_entry_gym") || ""
-  const isAdminLogin = location.pathname === "/admin-login"
-  const { login, loading: authLoading } = useAuth()
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [gymCode, setGymCode] = useState(gymSlug)
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  /*
+   * Keep the gym slug internally for gym-specific login flows.
+   * It is intentionally NOT displayed as a Gym Code field.
+   */
+  const gymSlug =
+    params.get("gym") ||
+    sessionStorage.getItem("gb_entry_gym") ||
+    ""
 
-  const redirectByRole = (loggedInUser) => {
-    const role = loggedInUser?.role
+  const isAdminLogin =
+    location.pathname === "/admin-login"
+
+  const { login, loading: authLoading } =
+    useAuth()
+
+  const [email, setEmail] =
+    useState("")
+
+  const [password, setPassword] =
+    useState("")
+
+  const [error, setError] =
+    useState("")
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const redirectByRole = (
+    loggedInUser,
+  ) => {
+    const role =
+      loggedInUser?.role
 
     if (role === "platform_owner") {
-      navigate("/platform", { replace: true })
+      navigate("/platform", {
+        replace: true,
+      })
       return
     }
 
     if (role === "admin") {
-      navigate("/admin", { replace: true })
+      navigate("/admin", {
+        replace: true,
+      })
       return
     }
 
     if (role === "trainer") {
-      navigate("/trainer", { replace: true })
+      navigate("/trainer", {
+        replace: true,
+      })
       return
     }
 
     if (role === "member") {
-      navigate("/dashboard", { replace: true })
+      navigate("/dashboard", {
+        replace: true,
+      })
       return
     }
 
-    setError("Your account does not have a valid role. Please contact GB administration.")
+    setError(
+      "Your account does not have a valid role. Please contact GB administration.",
+    )
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (
+    event,
+  ) => {
     event.preventDefault()
     setError("")
 
-    if (!email.trim() || !password) {
-      setError("Please enter your email and password.")
+    if (
+      !email.trim() ||
+      !password
+    ) {
+      setError(
+        "Please enter your email and password.",
+      )
       return
     }
 
     try {
       setLoading(true)
 
+      /*
+       * The gym slug is passed silently when
+       * the user came through a gym-specific
+       * portal/QR code.
+       *
+       * There is no visible Gym Code field.
+       */
       const result = await login(
-        email.trim().toLowerCase(),
+        email
+          .trim()
+          .toLowerCase(),
         password,
-        gymCode.trim(),
+        gymSlug.trim(),
       )
 
-      const loggedInUser = result?.user
+      const loggedInUser =
+        result?.user
 
       if (!loggedInUser) {
-        throw new Error("Login succeeded, but no user information was returned.")
+        throw new Error(
+          "Login succeeded, but no user information was returned.",
+        )
       }
 
-      redirectByRole(loggedInUser)
-    } catch (loginError) {
-      console.error("GB login error:", loginError)
+      redirectByRole(
+        loggedInUser,
+      )
+    } catch (
+      loginError
+    ) {
+      console.error(
+        "GB login error:",
+        loginError,
+      )
+
       setError(
-        loginError?.response?.data?.message ||
+        loginError?.response?.data
+          ?.message ||
           loginError?.message ||
           "Unable to log in. Please check your email and password.",
       )
@@ -109,15 +168,12 @@ export default function Login() {
             <p className="mt-3 text-slate-400">
               Sign in to your GB account
             </p>
-
-            {gymSlug && (
-              <p className="mt-2 text-xs text-slate-500">
-                Gym: {gymSlug}
-              </p>
-            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-5"
+          >
             <div>
               <label
                 htmlFor="login-email"
@@ -130,7 +186,11 @@ export default function Login() {
                 id="login-email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) =>
+                  setEmail(
+                    event.target.value,
+                  )
+                }
                 placeholder="Enter your email"
                 autoComplete="username"
                 disabled={loading}
@@ -150,7 +210,11 @@ export default function Login() {
                 id="login-password"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) =>
+                  setPassword(
+                    event.target.value,
+                  )
+                }
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 disabled={loading}
@@ -158,35 +222,17 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label htmlFor="login-gym-code" className="mb-2 block text-sm font-bold text-slate-300">
-                Gym Code <span className="font-normal text-slate-500">(optional)</span>
-              </label>
-              <input
-                id="login-gym-code"
-                type="text"
-                value={gymCode}
-                onChange={(event) => setGymCode(event.target.value.toLowerCase().trim())}
-                placeholder="Enter gym code if required"
-                autoComplete="organization"
-                disabled={loading}
-                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-4 text-white outline-none transition focus:border-lime-400 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </div>
-
-            {location.state?.message && (
+            {location.state
+              ?.message && (
               <div className="rounded-xl border border-lime-400/20 bg-lime-400/5 px-4 py-3 text-sm text-lime-300">
-                {location.state.message}
+                {
+                  location.state
+                    .message
+                }
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <Link
-                to="/trainer-login"
-                className="font-semibold text-lime-400 transition hover:text-lime-300"
-              >
-                Trainer sign in
-              </Link>
+            <div className="flex items-center justify-end text-sm">
               {isAdminLogin ? (
                 <Link
                   to="/admin-forgot-password"
@@ -194,13 +240,14 @@ export default function Login() {
                 >
                   Admin password reset
                 </Link>
-              ) : null}
-              <Link
-                to="/forgot-password"
-                className="font-semibold text-slate-400 transition hover:text-white"
-              >
-                Forgot Password?
-              </Link>
+              ) : (
+                <Link
+                  to="/forgot-password"
+                  className="font-semibold text-slate-400 transition hover:text-white"
+                >
+                  Forgot Password?
+                </Link>
+              )}
             </div>
 
             {error && (
@@ -214,12 +261,16 @@ export default function Login() {
               disabled={loading}
               className="w-full rounded-xl bg-lime-400 px-4 py-4 font-black text-black transition hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "SIGNING IN..." : "SIGN IN"}
+              {loading
+                ? "SIGNING IN..."
+                : "SIGN IN"}
             </button>
           </form>
 
           <div className="mt-7 border-t border-white/10 pt-6 text-center text-sm">
-            <span className="text-slate-500">New gym?</span>{" "}
+            <span className="text-slate-500">
+              New gym?
+            </span>{" "}
             <Link
               to="/register-gym"
               className="font-bold text-lime-400 transition hover:text-lime-300"
