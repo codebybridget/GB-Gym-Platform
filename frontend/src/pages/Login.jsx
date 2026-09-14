@@ -3,55 +3,112 @@ import {
   Link,
   useLocation,
   useNavigate,
-  useSearchParams,
+  useParams,
 } from "react-router-dom"
 import { useAuth } from "../context/AuthContext.jsx"
 import { gyms } from "../api/api.js"
 
-export default function Login() {
+const GYM_ENTRY_KEY = "gb_entry_gym"
+
+export default function Login({
+  gymSlug: gymSlugProp = "",
+}) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [params] = useSearchParams()
+  const params = new URLSearchParams(
+    location.search,
+  )
+  const { gymSlug: routeGymSlug = "" } =
+    useParams()
 
-  const [gymName, setGymName] = useState("Gym")
-  const [gymLogo, setGymLogo] = useState("")
-  const [gymLoading, setGymLoading] = useState(false)
-
+  /*
+   * Priority:
+   * 1. gymSlug supplied by the gym-scoped App route
+   * 2. gymSlug from the URL query
+   * 3. stored gym entry
+   *
+   * This keeps the QR-code gym context intact.
+   */
   const gymSlug =
-    params.get("gym") ||
-    sessionStorage.getItem("gb_entry_gym") ||
-    ""
+    String(
+      gymSlugProp ||
+        routeGymSlug ||
+        params.get("gym") ||
+        sessionStorage.getItem(
+          GYM_ENTRY_KEY,
+        ) ||
+        localStorage.getItem(
+          GYM_ENTRY_KEY,
+        ) ||
+        "",
+    ).trim()
 
-  const isGymLogin = Boolean(gymSlug.trim())
+  const isGymLogin =
+    Boolean(gymSlug)
 
   const isAdminLogin =
     location.pathname === "/admin-login"
 
-  const { login, loading: authLoading } = useAuth()
+  const { login, loading: authLoading } =
+    useAuth()
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [gymName, setGymName] =
+    useState("Gym")
+  const [gymLogo, setGymLogo] =
+    useState("")
+  const [gymLoading, setGymLoading] =
+    useState(false)
+
+  const [email, setEmail] =
+    useState("")
+  const [password, setPassword] =
+    useState("")
+  const [error, setError] =
+    useState("")
+  const [loading, setLoading] =
+    useState(false)
 
   /*
-   * Load the gym branding when the visitor came
-   * through a gym-specific portal or QR code.
+   * Persist the gym context whenever this is
+   * a gym-scoped login.
+   */
+  useEffect(() => {
+    if (!isGymLogin) {
+      return
+    }
+
+    sessionStorage.setItem(
+      GYM_ENTRY_KEY,
+      gymSlug,
+    )
+
+    localStorage.setItem(
+      GYM_ENTRY_KEY,
+      gymSlug,
+    )
+  }, [
+    gymSlug,
+    isGymLogin,
+  ])
+
+  /*
+   * Load the gym branding.
    */
   useEffect(() => {
     let mounted = true
 
     const loadGym = async () => {
-      if (!gymSlug.trim()) {
+      if (!isGymLogin) {
+        setGymName("Gym")
+        setGymLogo("")
         return
       }
 
       try {
         setGymLoading(true)
 
-        const response = await gyms.entry(
-          gymSlug.trim(),
-        )
+        const response =
+          await gyms.entry(gymSlug)
 
         if (!mounted) {
           return
@@ -74,6 +131,9 @@ export default function Login() {
               gym.logo ||
               "",
           )
+        } else {
+          setGymName("Gym")
+          setGymLogo("")
         }
       } catch (gymError) {
         console.error(
@@ -97,13 +157,21 @@ export default function Login() {
     return () => {
       mounted = false
     }
-  }, [gymSlug])
+  }, [
+    gymSlug,
+    isGymLogin,
+  ])
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (
+    event,
+  ) => {
     event.preventDefault()
     setError("")
 
-    if (!email.trim() || !password) {
+    if (
+      !email.trim() ||
+      !password
+    ) {
       setError(
         "Please enter your email and password.",
       )
@@ -114,19 +182,26 @@ export default function Login() {
       setLoading(true)
 
       /*
-       * When a visitor came through a gym portal,
-       * the gym slug is always passed to the backend.
+       * CRITICAL:
        *
-       * This prevents the login from becoming a
-       * generic GB Platform login.
+       * If this login came from a gym QR code,
+       * always send that gym's slug to the backend.
+       *
+       * The same email may be used by the person,
+       * but the gymSlug determines the gym context.
        */
       const result = await login(
-        email.trim().toLowerCase(),
+        email
+          .trim()
+          .toLowerCase(),
         password,
-        gymSlug.trim(),
+        isGymLogin
+          ? gymSlug
+          : "",
       )
 
-      const loggedInUser = result?.user
+      const loggedInUser =
+        result?.user
 
       if (!loggedInUser) {
         throw new Error(
@@ -134,20 +209,15 @@ export default function Login() {
         )
       }
 
-      const role = loggedInUser?.role
+      const role =
+        loggedInUser?.role
 
       /*
-       * GYM-SPECIFIC LOGIN
-       *
-       * A visitor who entered through:
-       *
-       * /gym/cgf-fitness
-       *
-       * must remain inside that gym's ecosystem.
-       *
-       * Platform owners are NEVER allowed to enter
-       * through a gym QR/login page.
+       * ================================================================
+       * GYM-SCOPED LOGIN
+       * ================================================================
        */
+
       if (isGymLogin) {
         const loggedInGymSlug =
           loggedInUser?.gym?.slug ||
@@ -155,13 +225,13 @@ export default function Login() {
           ""
 
         /*
-         * If the backend returned a gym slug,
-         * make sure it matches the gym portal
-         * the visitor came from.
+         * Prevent an account belonging to another
+         * gym from entering this gym portal.
          */
         if (
           loggedInGymSlug &&
-          loggedInGymSlug !== gymSlug.trim()
+          loggedInGymSlug.toLowerCase() !==
+            gymSlug.toLowerCase()
         ) {
           setError(
             `This account does not belong to ${gymName}. Please use the correct gym login.`,
@@ -170,10 +240,13 @@ export default function Login() {
         }
 
         /*
-         * Platform owners must use the GB Platform
-         * login, never a gym QR/login portal.
+         * Platform owner accounts must use
+         * the GB Platform login.
          */
-        if (role === "platform_owner") {
+        if (
+          role ===
+          "platform_owner"
+        ) {
           setError(
             "Platform owner accounts must sign in through the GB Platform login.",
           )
@@ -181,20 +254,27 @@ export default function Login() {
         }
 
         /*
-         * Gym members go to the gym/member dashboard.
+         * Gym member.
          */
-        if (role === "member") {
-          navigate("/dashboard", {
-            replace: true,
-          })
+        if (
+          role === "member"
+        ) {
+          navigate(
+            "/dashboard",
+            {
+              replace: true,
+            },
+          )
           return
         }
 
         /*
-         * Gym trainers should use the dedicated
-         * trainer login flow.
+         * Trainer accounts use the gym-specific
+         * trainer login.
          */
-        if (role === "trainer") {
+        if (
+          role === "trainer"
+        ) {
           setError(
             "Trainer accounts should use the Trainer Login for this gym.",
           )
@@ -202,10 +282,12 @@ export default function Login() {
         }
 
         /*
-         * Gym admins/owners should use the dedicated
-         * admin login flow.
+         * Gym admin accounts should use the
+         * appropriate administrator login.
          */
-        if (role === "admin") {
+        if (
+          role === "admin"
+        ) {
           setError(
             "Gym administrator accounts should use the Admin Login for this gym.",
           )
@@ -220,36 +302,60 @@ export default function Login() {
       }
 
       /*
+       * ================================================================
        * GENERIC GB PLATFORM LOGIN
+       * ================================================================
        *
-       * This section only applies when there is
-       * no gym slug.
+       * This section is reached only when there
+       * is no gym context.
        */
-      if (role === "platform_owner") {
-        navigate("/platform", {
-          replace: true,
-        })
+
+      if (
+        role ===
+        "platform_owner"
+      ) {
+        navigate(
+          "/platform",
+          {
+            replace: true,
+          },
+        )
         return
       }
 
-      if (role === "admin") {
-        navigate("/admin", {
-          replace: true,
-        })
+      if (
+        role === "admin"
+      ) {
+        navigate(
+          "/admin",
+          {
+            replace: true,
+          },
+        )
         return
       }
 
-      if (role === "trainer") {
-        navigate("/trainer", {
-          replace: true,
-        })
+      if (
+        role === "trainer"
+      ) {
+        navigate(
+          "/trainer",
+          {
+            replace: true,
+          },
+        )
         return
       }
 
-      if (role === "member") {
-        navigate("/dashboard", {
-          replace: true,
-        })
+      if (
+        role === "member"
+      ) {
+        navigate(
+          "/dashboard",
+          {
+            replace: true,
+          },
+        )
         return
       }
 
@@ -263,7 +369,8 @@ export default function Login() {
       )
 
       setError(
-        loginError?.response?.data?.message ||
+        loginError?.response
+          ?.data?.message ||
           loginError?.message ||
           "Unable to log in. Please check your email and password.",
       )
@@ -272,12 +379,24 @@ export default function Login() {
     }
   }
 
-  if (authLoading || gymLoading) {
+  /*
+   * ================================================================
+   * LOADING
+   * ================================================================
+   */
+
+  if (
+    authLoading ||
+    gymLoading
+  ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#020617] px-4 text-white">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D9FF3F] text-xl font-black text-[#020617]">
-            {gymName?.charAt(0)?.toUpperCase() || "G"}
+            {gymName
+              ?.charAt(0)
+              ?.toUpperCase() ||
+              "G"}
           </div>
 
           <div className="text-sm font-semibold text-slate-400">
@@ -289,6 +408,12 @@ export default function Login() {
       </main>
     )
   }
+
+  /*
+   * ================================================================
+   * LOGIN PAGE
+   * ================================================================
+   */
 
   return (
     <main className="min-h-screen bg-[#020617] px-4 py-8 text-white sm:px-6 lg:py-12">
@@ -306,7 +431,8 @@ export default function Login() {
                 {isGymLogin
                   ? gymName
                       ?.charAt(0)
-                      ?.toUpperCase() || "G"
+                      ?.toUpperCase() ||
+                    "G"
                   : "GB"}
               </div>
             )}
@@ -322,7 +448,8 @@ export default function Login() {
                 </h1>
 
                 <p className="mt-3 text-slate-400">
-                  Sign in to your {gymName} account
+                  Sign in to your{" "}
+                  {gymName} account
                 </p>
               </>
             ) : (
@@ -336,7 +463,8 @@ export default function Login() {
                 </h1>
 
                 <p className="mt-3 text-slate-400">
-                  Sign in to your GB account
+                  Sign in to your GB
+                  account
                 </p>
               </>
             )}
@@ -359,7 +487,10 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(event) =>
-                  setEmail(event.target.value)
+                  setEmail(
+                    event.target
+                      .value,
+                  )
                 }
                 placeholder="Enter your email"
                 autoComplete="username"
@@ -381,7 +512,10 @@ export default function Login() {
                 type="password"
                 value={password}
                 onChange={(event) =>
-                  setPassword(event.target.value)
+                  setPassword(
+                    event.target
+                      .value,
+                  )
                 }
                 placeholder="Enter your password"
                 autoComplete="current-password"
@@ -390,9 +524,14 @@ export default function Login() {
               />
             </div>
 
-            {location.state?.message && (
+            {location.state
+              ?.message && (
               <div className="rounded-xl border border-[#D9FF3F]/20 bg-[#D9FF3F]/5 px-4 py-3 text-sm text-[#D9FF3F]">
-                {location.state.message}
+                {
+                  location
+                    .state
+                    .message
+                }
               </div>
             )}
 
@@ -434,15 +573,18 @@ export default function Login() {
             {isGymLogin ? (
               <>
                 <span className="text-slate-500">
-                  New to {gymName}?
+                  New to{" "}
+                  {gymName}?
                 </span>{" "}
+
                 <Link
-                  to={`/register?gym=${encodeURIComponent(
+                  to={`/gym/${encodeURIComponent(
                     gymSlug,
-                  )}`}
+                  )}/register`}
                   className="font-bold text-[#D9FF3F] transition hover:text-[#E7FF72]"
                 >
-                  Create Your Account
+                  Create Your
+                  Account
                 </Link>
 
                 <div className="mt-4">
@@ -452,7 +594,8 @@ export default function Login() {
                     )}`}
                     className="font-semibold text-slate-500 transition hover:text-white"
                   >
-                    ← Back to {gymName}
+                    ← Back to{" "}
+                    {gymName}
                   </Link>
                 </div>
               </>
@@ -461,11 +604,13 @@ export default function Login() {
                 <span className="text-slate-500">
                   New gym?
                 </span>{" "}
+
                 <Link
                   to="/register-gym"
                   className="font-bold text-[#D9FF3F] transition hover:text-[#E7FF72]"
                 >
-                  Register Your Gym
+                  Register Your
+                  Gym
                 </Link>
               </>
             )}

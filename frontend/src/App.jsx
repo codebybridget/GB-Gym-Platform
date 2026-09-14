@@ -97,46 +97,107 @@ function LoadingScreen() {
 
 /*
 |--------------------------------------------------------------------------
-| GYM-SCOPED AUTH REDIRECT
+| GYM ENTRY STORAGE
+|--------------------------------------------------------------------------
+*/
+
+const GYM_ENTRY_KEY = "gb_entry_gym"
+
+function getStoredGymSlug() {
+  const sessionSlug =
+    sessionStorage.getItem(GYM_ENTRY_KEY)
+
+  if (sessionSlug?.trim()) {
+    return sessionSlug.trim()
+  }
+
+  const localSlug =
+    localStorage.getItem(GYM_ENTRY_KEY)
+
+  if (localSlug?.trim()) {
+    return localSlug.trim()
+  }
+
+  return ""
+}
+
+function saveGymSlug(gymSlug) {
+  const cleanSlug =
+    String(gymSlug || "").trim()
+
+  if (!cleanSlug) {
+    return
+  }
+
+  sessionStorage.setItem(
+    GYM_ENTRY_KEY,
+    cleanSlug,
+  )
+
+  localStorage.setItem(
+    GYM_ENTRY_KEY,
+    cleanSlug,
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| GENERIC GB PLATFORM AUTH
+|
+| These routes are ONLY for GB Platform users.
+|--------------------------------------------------------------------------
+*/
+
+function getPlatformLoginPath() {
+  return "/login"
+}
+
+/*
+|--------------------------------------------------------------------------
+| GYM-SCOPED AUTH PATHS
+|
+| These routes are ONLY for users entering through
+| a gym QR code / gym portal.
 |--------------------------------------------------------------------------
 */
 
 function getGymLoginPath() {
   const gymSlug =
-    sessionStorage.getItem(
-      "gb_entry_gym",
-    ) ||
-    localStorage.getItem(
-      "gb_entry_gym",
-    ) ||
-    ""
+    getStoredGymSlug()
 
-  if (!gymSlug.trim()) {
+  if (!gymSlug) {
     return "/login"
   }
 
-  return `/login?gym=${encodeURIComponent(
-    gymSlug.trim(),
-  )}`
+  return `/gym/${encodeURIComponent(
+    gymSlug,
+  )}/login`
+}
+
+function getGymRegisterPath() {
+  const gymSlug =
+    getStoredGymSlug()
+
+  if (!gymSlug) {
+    return "/register"
+  }
+
+  return `/gym/${encodeURIComponent(
+    gymSlug,
+  )}/register`
 }
 
 function getGymTrainerLoginPath() {
   const gymSlug =
-    sessionStorage.getItem(
-      "gb_entry_gym",
-    ) ||
-    localStorage.getItem(
-      "gb_entry_gym",
-    ) ||
-    ""
+    getStoredGymSlug()
 
-  if (!gymSlug.trim()) {
+  if (!gymSlug) {
     return "/trainer-login"
   }
 
-  return `/trainer-login?gym=${encodeURIComponent(
-    gymSlug.trim(),
-  )}`
+  return `/gym/${encodeURIComponent(
+    gymSlug,
+  )}/trainer-login`
 }
 
 /*
@@ -512,10 +573,10 @@ function TrainerRoute() {
 function PublicEntry() {
   const {
     isAuthenticated,
-    isAdmin,
     isMember,
     isTrainer,
     isPlatformOwner,
+    isAdmin,
     loading,
   } = useAuth()
 
@@ -598,7 +659,9 @@ function PublicEntry() {
             <button
               type="button"
               onClick={() =>
-                navigate("/login")
+                navigate(
+                  getPlatformLoginPath(),
+                )
               }
               className="block w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center text-xl font-medium text-white transition hover:bg-white/10"
             >
@@ -639,6 +702,9 @@ function MemberAssignmentsRoute() {
 /*
 |--------------------------------------------------------------------------
 | PLATFORM ROUTE
+|
+| Platform authentication ALWAYS goes through /login.
+| A gym QR code can never redirect into this area.
 |--------------------------------------------------------------------------
 */
 
@@ -656,10 +722,6 @@ function PlatformRoute() {
     return <LoadingScreen />
   }
 
-  /*
-   * Platform routes ALWAYS use the
-   * generic GB Platform authentication.
-   */
   if (!isAuthenticated) {
     return (
       <Navigate
@@ -697,16 +759,23 @@ function GymScopedLoginRoute() {
 
   useEffect(() => {
     if (gymSlug?.trim()) {
-      sessionStorage.setItem(
-        "gb_entry_gym",
-        gymSlug.trim(),
-      )
+      saveGymSlug(gymSlug)
     }
   }, [gymSlug])
 
+  if (!gymSlug?.trim()) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    )
+  }
+
   return (
     <Login
-      key={gymSlug}
+      key={`login-${gymSlug}`}
+      gymSlug={gymSlug}
     />
   )
 }
@@ -717,16 +786,23 @@ function GymScopedRegisterRoute() {
 
   useEffect(() => {
     if (gymSlug?.trim()) {
-      sessionStorage.setItem(
-        "gb_entry_gym",
-        gymSlug.trim(),
-      )
+      saveGymSlug(gymSlug)
     }
   }, [gymSlug])
 
+  if (!gymSlug?.trim()) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    )
+  }
+
   return (
     <Register
-      key={gymSlug}
+      key={`register-${gymSlug}`}
+      gymSlug={gymSlug}
     />
   )
 }
@@ -737,16 +813,23 @@ function GymScopedTrainerLoginRoute() {
 
   useEffect(() => {
     if (gymSlug?.trim()) {
-      sessionStorage.setItem(
-        "gb_entry_gym",
-        gymSlug.trim(),
-      )
+      saveGymSlug(gymSlug)
     }
   }, [gymSlug])
 
+  if (!gymSlug?.trim()) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    )
+  }
+
   return (
     <TrainerLogin
-      key={gymSlug}
+      key={`trainer-${gymSlug}`}
+      gymSlug={gymSlug}
     />
   )
 }
@@ -760,19 +843,31 @@ function GymScopedTrainerLoginRoute() {
 function App() {
   return (
     <Routes>
-      {/* GB PLATFORM */}
+      {/* ================================================================
+          GB PLATFORM
+          ================================================================ */}
+
       <Route
         path="/"
         element={<PublicEntry />}
       />
 
-      {/* GYM ENTRY PORTAL */}
+      {/* ================================================================
+          GYM ENTRY PORTAL
+          QR CODE DESTINATION
+          Example: /gym/cgf-fitness
+          ================================================================ */}
+
       <Route
         path="/gym/:gymSlug"
         element={<GymEntry />}
       />
 
-      {/* GYM-SCOPED MEMBER LOGIN */}
+      {/* ================================================================
+          GYM-SCOPED MEMBER LOGIN
+          Example: /gym/cgf-fitness/login
+          ================================================================ */}
+
       <Route
         path="/gym/:gymSlug/login"
         element={
@@ -780,7 +875,11 @@ function App() {
         }
       />
 
-      {/* GYM-SCOPED MEMBER REGISTRATION */}
+      {/* ================================================================
+          GYM-SCOPED MEMBER REGISTRATION
+          Example: /gym/cgf-fitness/register
+          ================================================================ */}
+
       <Route
         path="/gym/:gymSlug/register"
         element={
@@ -788,7 +887,11 @@ function App() {
         }
       />
 
-      {/* GYM-SCOPED TRAINER LOGIN */}
+      {/* ================================================================
+          GYM-SCOPED TRAINER LOGIN
+          Example: /gym/cgf-fitness/trainer-login
+          ================================================================ */}
+
       <Route
         path="/gym/:gymSlug/trainer-login"
         element={
@@ -796,7 +899,11 @@ function App() {
         }
       />
 
-      {/* GENERIC GB AUTHENTICATION */}
+      {/* ================================================================
+          GENERIC GB PLATFORM AUTH
+          These are NOT gym QR routes.
+          ================================================================ */}
+
       <Route
         path="/login"
         element={<Login />}
@@ -839,7 +946,10 @@ function App() {
         element={<AdminLogin />}
       />
 
-      {/* PLATFORM */}
+      {/* ================================================================
+          PLATFORM
+          ================================================================ */}
+
       <Route element={<PlatformRoute />}>
         <Route
           element={<PlatformLayout />}
@@ -884,7 +994,10 @@ function App() {
         </Route>
       </Route>
 
-      {/* PAYMENT CALLBACK */}
+      {/* ================================================================
+          PAYMENT CALLBACK
+          ================================================================ */}
+
       <Route
         path="/payment/callback"
         element={
@@ -892,7 +1005,10 @@ function App() {
         }
       />
 
-      {/* MEMBERS */}
+      {/* ================================================================
+          MEMBERS
+          ================================================================ */}
+
       <Route
         element={<ProtectedRoute />}
       >
@@ -983,7 +1099,10 @@ function App() {
         </Route>
       </Route>
 
-      {/* TRAINERS */}
+      {/* ================================================================
+          TRAINERS
+          ================================================================ */}
+
       <Route
         element={<TrainerRoute />}
       >
@@ -1048,7 +1167,10 @@ function App() {
         </Route>
       </Route>
 
-      {/* SHARED AUTHENTICATED PAGES */}
+      {/* ================================================================
+          SHARED AUTHENTICATED PAGES
+          ================================================================ */}
+
       <Route
         element={
           <AuthenticatedRoute />
@@ -1066,7 +1188,10 @@ function App() {
         </Route>
       </Route>
 
-      {/* ADMIN */}
+      {/* ================================================================
+          ADMIN
+          ================================================================ */}
+
       <Route
         element={<AdminRoute />}
       >
@@ -1197,7 +1322,10 @@ function App() {
         </Route>
       </Route>
 
-      {/* FALLBACK */}
+      {/* ================================================================
+          FALLBACK
+          ================================================================ */}
+
       <Route
         path="*"
         element={
