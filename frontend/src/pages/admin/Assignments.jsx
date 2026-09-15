@@ -215,11 +215,6 @@ function Assignments() {
       const programResponse =
         await getPrograms()
 
-      console.log(
-        "PROGRAM API RESPONSE:",
-        programResponse,
-      )
-
       let loadedPrograms = []
 
       if (
@@ -251,11 +246,6 @@ function Assignments() {
         loadedPrograms =
           programResponse.data
       }
-
-      console.log(
-        "LOADED PROGRAMS:",
-        loadedPrograms,
-      )
 
       setPrograms(
         loadedPrograms.filter(

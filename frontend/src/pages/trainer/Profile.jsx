@@ -239,7 +239,7 @@ function getMediaUrl(value) {
     return `${base}${source.startsWith("/") ? "" : "/"}${source}`
   }
 
-  return `http://localhost:5000${
+  return `https://gb-gym-platform.onrender.com${
     source.startsWith("/")
       ? ""
       : "/"

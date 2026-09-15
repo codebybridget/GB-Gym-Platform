@@ -31,10 +31,10 @@ self.addEventListener("push", (event) => {
       "It is time for your workout.",
     icon:
       data.icon ||
-      "/favicon.ico",
+      "/favicon.png",
     badge:
       data.badge ||
-      "/favicon.ico",
+      "/favicon.png",
     tag: uniqueTag,
     renotify: true,
     requireInteraction:

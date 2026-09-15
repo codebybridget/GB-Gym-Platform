@@ -398,11 +398,6 @@ async function getTodayWorkout() {
     const response =
       await getMyTodayWorkout()
 
-    console.log(
-      "TODAY WORKOUT API RESPONSE:",
-      response,
-    )
-
     /*
     |--------------------------------------------------------------------------
     | IMPORTANT
@@ -488,11 +483,6 @@ async function getTodayWorkout() {
     const response =
       await getMyPrograms()
 
-    console.log(
-      "MEMBER PROGRAM ASSIGNMENTS:",
-      response,
-    )
-
     const assignments =
       Array.isArray(
         response?.assignments,
@@ -507,10 +497,6 @@ async function getTodayWorkout() {
       )
 
     if (assignment) {
-      console.log(
-        "TODAY'S ASSIGNMENT FOUND:",
-        assignment,
-      )
 
       const workoutLog =
         await getTodayWorkoutLog(today)
@@ -521,11 +507,6 @@ async function getTodayWorkout() {
         workoutLog,
       )
     }
-
-    console.log(
-      "No assignment covers today's date:",
-      today,
-    )
 
     return {
       hasWorkout: false,

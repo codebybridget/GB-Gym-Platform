@@ -591,7 +591,7 @@ export default function Settings() {
     if (!gym?.slug) return ""
 
     const baseUrl =
-      "https://gb-gym-frontend.onrender.com"
+      (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "")
 
     return `${baseUrl}/gym/${encodeURIComponent(
       gym.slug
